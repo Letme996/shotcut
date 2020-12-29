@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Meltytech, LLC
+ * Copyright (c) 2018-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.1
 import QtQuick.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 import Shotcut.Controls 1.0
 
@@ -37,9 +38,10 @@ Item {
     property var endValues:    [0, 1, 0.25]
 
     Component.onCompleted: {
+        filter.set('threads', filter.getDouble(showHistogramParam) === 1)
         if (filter.isNew) {
             // Set default parameter values
-            channelCombo.currentIndex = 3
+            filter.set(channelParam, 3/10)
             filter.set(inputBlackParam, 0)
             filter.set(inputWhiteParam, 1)
             filter.set(gammaParam, 0.25)
@@ -87,8 +89,8 @@ Item {
 
     function setControls() {
         setKeyframedControls()
-        channelCombo.currentIndex = filter.getDouble(channelParam) * 10
-        histogramCombo.currentIndex = (filter.getDouble(showHistogramParam) === 1) ? (filter.getDouble(histogramPositionParam) * 10) : 4
+        channelCombo.currentIndex = Math.round(filter.getDouble(channelParam) * 10)
+        histogramCombo.currentIndex = (filter.getDouble(showHistogramParam) === 1) ? Math.round(filter.getDouble(histogramPositionParam) * 10) : 4
         outputBlackSlider.value = filter.getDouble(outputBlackParam) * outputBlackSlider.maximumValue
         outputWhiteSlider.value = filter.getDouble(outputWhiteParam) * outputWhiteSlider.maximumValue
     }
@@ -173,33 +175,41 @@ Item {
             text: qsTr('Channel')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: channelCombo
             model: [qsTr('Red'), qsTr('Green'), qsTr('Blue'), qsTr('Value')]
-            onCurrentIndexChanged: filter.set(channelParam, currentIndex / 10)
+            onActivated: filter.set(channelParam, currentIndex / 10)
         }
         UndoButton {
-            onClicked: channelCombo.currentIndex = 3
+            onClicked: {
+                filter.set(channelParam, 3 / 10)
+                channelCombo.currentIndex = 3
+            }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Histogram')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: histogramCombo
             model: [qsTr('Top Left'), qsTr('Top Right'), qsTr('Bottom Left'), qsTr('Bottom Right'), qsTr('None')]
-            onCurrentIndexChanged: {
+            onActivated: {
                 filter.set(showHistogramParam, currentIndex < 4)
+                filter.set('threads', filter.getDouble(showHistogramParam) === 1)
                 if (currentIndex < 4)
                     filter.set(histogramPositionParam, currentIndex / 10)
             }
         }
         UndoButton {
-            onClicked: histogramCombo.currentIndex = 4
+            onClicked: {
+                filter.set(showHistogramParam, 0)
+                filter.set('threads', 0)
+                histogramCombo.currentIndex = 4
+            }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Input Black')
@@ -274,7 +284,7 @@ Item {
         UndoButton {
             onClicked: outputBlackSlider.value = 0
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Output White')
@@ -289,7 +299,7 @@ Item {
         UndoButton {
             onClicked: outputWhiteSlider.value = 255
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Item {
             Layout.fillHeight: true

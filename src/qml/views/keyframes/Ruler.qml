@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,11 @@ import QtQuick 2.0
 import QtQuick.Controls 1.0
 
 Rectangle {
-    property real intervalSeconds: 5 * Math.max(1, Math.floor(1.5 / timeScale))
+    property real intervalSeconds: (timeScale > 5)? 1 : (5 * Math.max(1, Math.floor(1.5 / timeScale)))
 
     SystemPalette { id: activePalette }
 
     id: rulerTop
-    enabled: false
     height: 28
     color: activePalette.base
 
@@ -36,6 +35,9 @@ Rectangle {
             width: 1
             color: activePalette.windowText
             x: index * intervalSeconds * profile.fps * timeScale
+            visible: ((x + width)   > scrollView.flickableItem.contentX) && // right edge
+                      (x            < scrollView.flickableItem.contentX + scrollView.width) // left edge
+
             Label {
                 anchors.left: parent.right
                 anchors.leftMargin: 2
@@ -44,6 +46,17 @@ Rectangle {
                 color: activePalette.windowText
                 text: application.timecode(index * intervalSeconds * profile.fps + 2).substr(0, 8)
             }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+        onExited: bubbleHelp.hide()
+        onPositionChanged: {
+            var text = application.timecode(mouse.x / timeScale)
+            bubbleHelp.show(mouse.x + bubbleHelp.width - 8, mouse.y + 65, text)
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 Meltytech, LLC
+ * Copyright (c) 2015-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.0
 import QtQuick.Controls 1.1
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.1
 import Shotcut.Controls 1.0
 
@@ -49,6 +50,7 @@ Item {
     width: 200
     height: 300
     Component.onCompleted: {
+        filter.set('threads', 0)
         if (filter.isNew) {
             filter.set(keyColorParam, keyColorDefault)
             filter.set(invertParam, invertDefault)
@@ -217,7 +219,7 @@ Item {
             text: qsTr('Shape')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: shapeCombo
             implicitWidth: 180
             model: ListModel {
@@ -226,31 +228,39 @@ Item {
                 ListElement { text: qsTr('Ellipsoid'); value: 0.5 }
                 ListElement { text: qsTr('Diamond');   value: 1.0 }
             }
-            onCurrentIndexChanged: filter.set(shapeParam, shapeModel.get(currentIndex).value)
+            textRole: 'text'
+            onActivated: filter.set(shapeParam, shapeModel.get(currentIndex).value)
         }
         UndoButton {
-            onClicked: shapeCombo.currentIndex = 1
+            onClicked: {
+                filter.set(shapeParam, shapeModel.get(1).value)
+                shapeCombo.currentIndex = 1
+            }
         }
 
         Label {
             text: qsTr('Edge')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: edgeCombo
             implicitWidth: 180
             model: ListModel {
                 id: edgeModel
-                ListElement { text: qsTr('Hard');   value: 0.0 }
+                ListElement { text: qsTr('Hard', 'Chroma Key Advanced filter');   value: 0.0 }
                 ListElement { text: qsTr('Fat');    value: 0.35 }
                 ListElement { text: qsTr('Normal'); value: 0.6 }
                 ListElement { text: qsTr('Thin');   value: 0.7 }
                 ListElement { text: qsTr('Slope');  value: 0.9 }
             }
-            onCurrentIndexChanged: filter.set(edgeParam, edgeModel.get(currentIndex).value)
+            textRole: 'text'
+            onActivated: filter.set(edgeParam, edgeModel.get(currentIndex).value)
         }
         UndoButton {
-            onClicked: edgeCombo.currentIndex = 4
+            onClicked: {
+                filter.set(edgeParam, edgeModel.get(4).value)
+                edgeCombo.currentIndex = 4
+            }
         }
 
         Label {
@@ -274,21 +284,25 @@ Item {
             text: qsTr('Operation')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: operationCombo
             implicitWidth: 180
             model: ListModel {
                 id: operationModel
-                ListElement { text: qsTr('Write on Clear'); value: 0.0 }
-                ListElement { text: qsTr('Maximum');        value: 0.3 }
-                ListElement { text: qsTr('Minimum');        value: 0.5 }
-                ListElement { text: qsTr('Add');            value: 0.7 }
-                ListElement { text: qsTr('Subtract');       value: 1.0 }
+                ListElement { text: qsTr('Overwrite'); value: 0.0 }
+                ListElement { text: qsTr('Maximum');   value: 0.3 }
+                ListElement { text: qsTr('Minimum');   value: 0.5 }
+                ListElement { text: qsTr('Add');       value: 0.7 }
+                ListElement { text: qsTr('Subtract');  value: 1.0 }
             }
-            onCurrentIndexChanged: filter.set(operationParam, operationModel.get(currentIndex).value )
+            textRole: 'text'
+            onActivated: filter.set(operationParam, operationModel.get(currentIndex).value )
         }
         UndoButton {
-            onClicked: operationCombo.currentIndex = 0
+            onClicked: {
+                filter.set(operationParam, operationModel.get(0).value )
+                operationCombo.currentIndex = 0
+            }
         }
 
         Rectangle {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Meltytech, LLC
+ * Copyright (c) 2018-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,15 +64,19 @@ CheckBox {
     MessageDialog {
         id: confirmDialog
         visible: false
-        modality: Qt.WindowModal
+        modality: application.dialogModality
         icon: StandardIcon.Question
         title: qsTr("Confirm Removing Keyframes")
         text: qsTr('This will remove all keyframes for this parameter.<p>Do you still want to do this?')
         standardButtons: StandardButton.Yes | StandardButton.No
         onYes: {
+            tooltip.isVisible = false
             checkbox.checked = false
             checkbox.toggled()
         }
-        onNo: checkbox.checked = true
+        onNo: {
+            tooltip.isVisible = false
+            checkbox.checked = true
+        }
     }
 }

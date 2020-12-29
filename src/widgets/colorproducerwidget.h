@@ -40,14 +40,21 @@ public:
 
 signals:
     void producerChanged(Mlt::Producer*);
+    void modified();
+
+public slots:
+    void rename();
 
 private slots:
     void on_colorButton_clicked();
     void on_preset_selected(void* p);
     void on_preset_saveClicked();
 
+    void on_lineEdit_editingFinished();
+
 private:
     Ui::ColorProducerWidget *ui;
+    QString m_title;
 };
 
 #endif // COLORPRODUCERWIDGET_H

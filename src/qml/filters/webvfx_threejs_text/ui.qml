@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 import QtQuick 2.1
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 import QtQuick.Dialogs 1.0
 import Shotcut.Controls 1.0
@@ -26,6 +27,7 @@ Item {
     width: 400
     height: 250
     Component.onCompleted: {
+        filter.set('mlt_resolution_scale', 1)
         if (filter.isNew) {
             filter.set('resource', filter.path + 'threejs_text.html')
             // Set default parameter values
@@ -92,7 +94,7 @@ Item {
             text: qsTr('Font')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: fontCombo
             implicitWidth: 200
             model: ['Liberation Sans', 'Liberation Serif', 'Gentilis', 'Helvetiker', 'Optimer']

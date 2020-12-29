@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.1
 import QtQuick.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 
 Item {
@@ -40,7 +41,9 @@ Item {
         if (filter.isNew) {
             // Set default parameter values
             fromCombo.currentIndex = 0
+            filter.set(fromParameter, 0)
             toCombo.currentIndex = (application.audioChannels() === 1) ? 0 : 1
+            filter.set(fromParameter, toCombo.currentIndex)
         } else {
             // Initialize parameter values
             fromCombo.currentIndex = filter.get(fromParameter)
@@ -54,16 +57,16 @@ Item {
 
         RowLayout {
             Label { text: qsTr('Swap') }
-            ComboBox {
+            Controls2.ComboBox {
                 id: fromCombo
                 model: [qsTr('Left'), qsTr('Right')]
-                onCurrentIndexChanged: filter.set(fromParameter, currentIndex)
+                onActivated: filter.set(fromParameter, currentIndex)
             }
             Label { text: qsTr('with') }
-            ComboBox {
+            Controls2.ComboBox {
                 id: toCombo
                 model: fromCombo.model
-                onCurrentIndexChanged: filter.set(toParameter, currentIndex)
+                onActivated: filter.set(toParameter, currentIndex)
             }
         }
         Item {

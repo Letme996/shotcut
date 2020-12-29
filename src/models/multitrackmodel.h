@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,7 +116,7 @@ signals:
     void loaded();
     void closed();
     void modified();
-    void seeked(int position);
+    void seeked(int position, bool seekPlayer = true);
     void trackHeightChanged();
     void scaleFactorChanged();
     void showStatusMessage(QString);
@@ -148,8 +148,6 @@ public slots:
     void liftClip(int trackIndex, int clipIndex);
     void splitClip(int trackIndex, int clipIndex, int position);
     void joinClips(int trackIndex, int clipIndex);
-    void appendFromPlaylist(Mlt::Playlist* playlist, int trackIndex);
-    void overwriteFromPlaylist(Mlt::Playlist& playlist, int trackIndex, int position);
     void fadeIn(int trackIndex, int clipIndex, int duration);
     void fadeOut(int trackIndex, int clipIndex, int duration);
     bool addTransitionValid(int fromTrack, int toTrack, int clipIndex, int position, bool ripple);
@@ -170,6 +168,7 @@ public slots:
     void filterAddedOrRemoved(Mlt::Producer *producer);
     void onFilterChanged(Mlt::Filter* filter);
     void reload(bool asynchronous = false);
+    void replace(int trackIndex, int clipIndex, Mlt::Producer& clip, bool copyFilters = true);
 
 private:
     Mlt::Tractor* m_tractor;
@@ -194,6 +193,7 @@ private:
     bool isFiltered(Mlt::Producer* producer = 0) const;
     int getDuration();
     void adjustServiceFilterDurations(Mlt::Service& service, int duration);
+    bool warnIfInvalid(Mlt::Service& service);
 
     friend class UndoHelper;
 

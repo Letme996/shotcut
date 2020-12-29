@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2019 Meltytech, LLC
+ * Copyright (c) 2011-2020 Meltytech, LLC
  *
  * GL shader based on BSD licensed code from Peter Bengtsson:
  * http://www.fourcc.org/source/YUV420P-OpenGL-GLSLang.c
@@ -75,6 +75,7 @@ GLWidget::GLWidget(QObject *parent)
     m_texture[0] = m_texture[1] = m_texture[2] = 0;
     quickWindow()->setPersistentOpenGLContext(true);
     quickWindow()->setPersistentSceneGraph(true);
+    setAttribute(Qt::WA_AcceptTouchEvents);
     quickWindow()->setClearBeforeRendering(false);
     setResizeMode(QQuickWidget::SizeRootObjectToView);
     QDir importPath = QmlUtilities::qmlDir();
@@ -96,6 +97,7 @@ GLWidget::GLWidget(QObject *parent)
     connect(quickWindow(), SIGNAL(sceneGraphInitialized()), SLOT(setBlankScene()), Qt::QueuedConnection);
     connect(quickWindow(), SIGNAL(beforeRendering()), SLOT(paintGL()), Qt::DirectConnection);
     connect(&m_refreshTimer, SIGNAL(timeout()), SLOT(onRefreshTimeout()));
+    connect(this, SIGNAL(rectChanged()), SIGNAL(zoomChanged()));
     LOG_DEBUG() << "end";
 }
 
@@ -134,6 +136,11 @@ void GLWidget::initializeGL()
     LOG_INFO() << "OpenGL renderer" << QString::fromUtf8((const char*) glGetString(GL_RENDERER));
     LOG_INFO() << "OpenGL threaded?" << quickWindow()->openglContext()->supportsThreadedOpenGL();
     LOG_INFO() << "OpenGL ES?" << quickWindow()->openglContext()->isOpenGLES();
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_maxTextureSize);
+    LOG_INFO() << "OpenGL maximum texture size =" << m_maxTextureSize;
+    GLint dims[2];
+    glGetIntegerv(GL_MAX_VIEWPORT_DIMS, &dims[0]);
+    LOG_INFO() << "OpenGL maximum viewport size =" << dims[0] << "x" << dims[1];
 
     if (m_glslManager && quickWindow()->openglContext()->isOpenGLES()) {
         delete m_glslManager;
@@ -191,7 +198,7 @@ void GLWidget::setBlankScene()
 
 void GLWidget::resizeGL(int width, int height)
 {
-    int x, y, w, h;
+    double x, y, w, h;
     double this_aspect = (double) width / height;
     double video_aspect = profile().dar();
 
@@ -213,8 +220,8 @@ void GLWidget::resizeGL(int width, int height)
         w = height * video_aspect;
         h = height;
     }
-    x = (width - w) / 2;
-    y = (height - h) / 2;
+    x = (width - w) / 2.0;
+    y = (height - h) / 2.0;
     m_rect.setRect(x, y, w, h);
     emit rectChanged();
 }
@@ -348,8 +355,8 @@ void GLWidget::paintGL()
 #ifndef QT_NO_DEBUG
     QOpenGLFunctions* f = quickWindow()->openglContext()->functions();
 #endif
-    int width = this->width() * devicePixelRatio();
-    int height = this->height() * devicePixelRatio();
+    float width = this->width() * devicePixelRatio();
+    float height = this->height() * devicePixelRatio();
 
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
@@ -424,10 +431,10 @@ void GLWidget::paintGL()
     QVector<QVector2D> vertices;
     width = m_rect.width() * devicePixelRatio();
     height = m_rect.height() * devicePixelRatio();
-    vertices << QVector2D(float(-width)/2.0f, float(-height)/2.0f);
-    vertices << QVector2D(float(-width)/2.0f, float( height)/2.0f);
-    vertices << QVector2D(float( width)/2.0f, float(-height)/2.0f);
-    vertices << QVector2D(float( width)/2.0f, float( height)/2.0f);
+    vertices << QVector2D(-width/2.0f, -height/2.0f);
+    vertices << QVector2D(-width/2.0f, height/2.0f);
+    vertices << QVector2D(width/2.0f, -height/2.0f);
+    vertices << QVector2D(width/2.0f, height/2.0f);
     m_shader->enableAttributeArray(m_vertexLocation);
     check_error(f);
     m_shader->setAttributeArray(m_vertexLocation, vertices.constData());
@@ -487,7 +494,7 @@ void GLWidget::mouseMoveEvent(QMouseEvent* event)
 {
     QQuickWidget::mouseMoveEvent(event);
     if (event->isAccepted()) return;
-    if (event->modifiers() == Qt::ShiftModifier && m_producer) {
+    if (event->modifiers() == (Qt::ShiftModifier | Qt::AltModifier) && m_producer) {
         emit seekTo(m_producer->get_length() * event->x() / width());
         return;
     }
@@ -634,7 +641,7 @@ int GLWidget::reconfigure(bool isMulti)
     QString serviceName = property("mlt_service").toString();
     if (!m_consumer || !m_consumer->is_valid()) {
         if (serviceName.isEmpty()) {
-            m_consumer.reset(new Mlt::FilteredConsumer(profile(), "sdl2_audio"));
+            m_consumer.reset(new Mlt::FilteredConsumer(previewProfile(), "sdl2_audio"));
             if (m_consumer->is_valid())
                 serviceName = "sdl2_audio";
             else
@@ -642,9 +649,9 @@ int GLWidget::reconfigure(bool isMulti)
             m_consumer.reset();
         }
         if (isMulti)
-            m_consumer.reset(new Mlt::FilteredConsumer(profile(), "multi"));
+            m_consumer.reset(new Mlt::FilteredConsumer(previewProfile(), "multi"));
         else
-            m_consumer.reset(new Mlt::FilteredConsumer(profile(), serviceName.toLatin1().constData()));
+            m_consumer.reset(new Mlt::FilteredConsumer(previewProfile(), serviceName.toLatin1().constData()));
 
         delete m_threadStartEvent;
         m_threadStartEvent = 0;
@@ -678,6 +685,7 @@ int GLWidget::reconfigure(bool isMulti)
             m_consumer->set("0.drop_max", qRound(profile().fps() / 4.0));
             if (property("keyer").isValid())
                 m_consumer->set("0.keyer", property("keyer").toInt());
+            m_consumer->set("0.video_delay", Settings.playerVideoDelayMs());
         }
         else {
             if (!profile().progressive())
@@ -689,6 +697,7 @@ int GLWidget::reconfigure(bool isMulti)
             m_consumer->set("drop_max", qRound(profile().fps() / 4.0));
             if (property("keyer").isValid())
                 m_consumer->set("keyer", property("keyer").toInt());
+            m_consumer->set("video_delay", Settings.playerVideoDelayMs());
         }
         if (m_glslManager) {
             if (!m_threadStartEvent)
@@ -972,6 +981,11 @@ void FrameRenderer::showFrame(Mlt::Frame frame)
         }
     }
     emit frameDisplayed(m_displayFrame);
+
+    if (m_imageRequested) {
+        m_imageRequested = false;
+        emit imageReady();
+    }
 
     m_semaphore.release();
 }

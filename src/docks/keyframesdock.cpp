@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2016-2018 Meltytech, LLC
- * Author: Dan Dennedy <dan@dennedy.org>
+ * Copyright (c) 2016-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,8 +47,12 @@ KeyframesDock::KeyframesDock(QmlProducer* qmlProducer, QWidget *parent)
     QIcon icon = QIcon::fromTheme("chronometer", QIcon(":/icons/oxygen/32x32/actions/chronometer.png"));
     setWindowIcon(icon);
     toggleViewAction()->setIcon(windowIcon());
-    setMinimumWidth(300);
+    setMinimumSize(200, 50);
     m_qview.setFocusPolicy(Qt::StrongFocus);
+    m_qview.quickWindow()->setPersistentSceneGraph(false);
+#ifndef Q_OS_MAC
+    m_qview.setAttribute(Qt::WA_AcceptTouchEvents);
+#endif
     setWidget(&m_qview);
 
     QmlUtilities::setCommonProperties(m_qview.rootContext());
@@ -158,4 +161,11 @@ void KeyframesDock::load(bool force)
         QUrl source = QUrl::fromLocalFile(viewPath.absoluteFilePath("keyframes.qml"));
         m_qview.setSource(source);
     }
+}
+
+void KeyframesDock::onProducerModified()
+{
+    // The clip name may have changed.
+    if (m_qmlProducer)
+        emit m_qmlProducer->producerChanged();
 }

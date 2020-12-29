@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019 Meltytech, LLC
+ * Copyright (c) 2012-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,12 +40,13 @@ public:
         return &m_model;
     }
     int position();
+    void replaceClipsWithHash(const QString& hash, Mlt::Producer& producer);
 
 signals:
     void clipOpened(Mlt::Producer* producer, bool play = false);
     void itemActivated(int start);
     void showStatusMessage(QString);
-    void addAllTimeline(Mlt::Playlist*);
+    void addAllTimeline(Mlt::Playlist*, bool skipProxy = false);
 
 public slots:
     void incrementIndex();
@@ -118,6 +119,8 @@ private slots:
 
     void on_actionAddToTimeline_triggered();
 
+    void on_actionAddToSlideshow_triggered();
+
     void on_updateButton_clicked();
 
     void updateViewModeFromActions();
@@ -138,6 +141,8 @@ private slots:
 
     void on_actionUpdateThumbnails_triggered();
 
+    void onProducerModified();
+
 protected:
     void keyPressEvent(QKeyEvent* event);
     void keyReleaseEvent(QKeyEvent* event);
@@ -145,6 +150,7 @@ protected:
 private:
     void setViewMode(PlaylistModel::ViewMode mode);
     void resetPlaylistIndex();
+    void emitDataChanged(const QVector<int> &roles);
 
     Ui::PlaylistDock *ui;
     QAbstractItemView *m_view;

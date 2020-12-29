@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ class QmlKeyframesParameter : public QObject
     Q_PROPERTY(bool isCurve MEMBER m_isCurve NOTIFY changed)
     Q_PROPERTY(double minimum MEMBER m_minimum NOTIFY changed)
     Q_PROPERTY(double maximum MEMBER m_maximum NOTIFY changed)
+    Q_PROPERTY(bool isRectangle MEMBER m_isRectangle NOTIFY changed)
 
 public:
     explicit QmlKeyframesParameter(QObject* parent = 0);
@@ -46,6 +47,7 @@ public:
     bool isCurve() const { return m_isCurve; }
     double minimum() const { return m_minimum; }
     double maximum() const { return m_maximum; }
+    bool isRectangle() const { return m_isRectangle; }
 
 signals:
     void changed();
@@ -58,6 +60,7 @@ private:
     bool m_isCurve;
     double m_minimum;
     double m_maximum;
+    bool m_isRectangle;
 };
 
 class QmlKeyframesMetadata : public QObject
@@ -120,6 +123,8 @@ class QmlMetadata : public QObject
     Q_PROPERTY(bool isClipOnly READ isClipOnly WRITE setIsClipOnly)
     Q_PROPERTY(bool isGpuCompatible READ isGpuCompatible() WRITE setIsGpuCompatible)
     Q_PROPERTY(QmlKeyframesMetadata* keyframes READ keyframes NOTIFY changed)
+    Q_PROPERTY(bool isDeprecated READ isDeprecated WRITE setIsDeprecated)
+    Q_PROPERTY(QString minimumVersion MEMBER m_minimumVersion NOTIFY changed)
 
 public:
     enum PluginType {
@@ -127,6 +132,7 @@ public:
         Producer,
         Transition
     };
+    unsigned filterMask;
 
     explicit QmlMetadata(QObject *parent = 0);
     void loadSettings();
@@ -163,6 +169,9 @@ public:
     bool isGpuCompatible() const { return m_isGpuCompatible; }
     void setIsGpuCompatible(bool isCompatible) { m_isGpuCompatible = isCompatible; }
     QmlKeyframesMetadata* keyframes() { return &m_keyframes; }
+    bool isDeprecated() const { return m_isDeprecated; }
+    void setIsDeprecated(bool deprecated) { m_isDeprecated = deprecated; }
+    bool isMltVersion(const QString& version);
 
 signals:
     void changed();
@@ -183,6 +192,8 @@ private:
     bool m_isClipOnly;
     bool m_isGpuCompatible;
     QmlKeyframesMetadata m_keyframes;
+    bool m_isDeprecated;
+    QString m_minimumVersion;
 };
 
 #endif // QMLMETADATA_H

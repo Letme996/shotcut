@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 Meltytech, LLC
+ * Copyright (c) 2017-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 import QtQuick 2.5
 import QtQml.Models 2.1
 import QtQuick.Controls 1.3
+import QtQuick.Controls 2.12 as Controls2
 import Shotcut.Controls 1.0
 import QtGraphicalEffects 1.0
 import QtQuick.Window 2.2
@@ -49,12 +50,29 @@ Rectangle {
         afterClip.generateWaveform()
     }
 
-    function setZoom(value) {
+    function setZoom(value, targetX) {
+        if (!targetX)
+            targetX = scrollView.flickableItem.contentX + scrollView.width / 2
+        var offset = targetX - scrollView.flickableItem.contentX
+        var before = timeScale
+
         keyframesToolbar.scaleSlider.value = value
+
+        scrollView.flickableItem.contentX = Logic.clamp((targetX * timeScale / before) - offset, 0, Logic.scrollMax().x)
     }
 
-    function adjustZoom(by) {
-        setZoom(keyframesToolbar.scaleSlider.value + by)
+    Timer {
+        id: scrollZoomTimer
+        interval: 100
+        onTriggered: {
+            Logic.scrollIfNeeded(true)
+        }
+    }
+
+    function adjustZoom(by, targetX) {
+        setZoom(keyframesToolbar.scaleSlider.value + by, targetX)
+        if (settings.timelineScrollZoom)
+            scrollZoomTimer.restart()
     }
 
     function zoomIn() {
@@ -65,17 +83,12 @@ Rectangle {
         adjustZoom(-0.0625)
     }
 
-    function resetZoom() {
-        setZoom(1.0)
+    function zoomToFit() {
+        setZoom(Math.pow((scrollView.width - 50) * timeScale / tracksContainer.width - 0.01, 1/3))
     }
 
-    function zoomByWheel(wheel) {
-        if (wheel.modifiers & Qt.ControlModifier) {
-            adjustZoom(wheel.angleDelta.y / 720)
-        }
-        if (wheel.modifiers & Qt.ShiftModifier) {
-            multitrack.trackHeight = Math.max(10, multitrack.trackHeight + wheel.angleDelta.y / 5)
-        }
+    function resetZoom() {
+        setZoom(1.0)
     }
 
     MouseArea {
@@ -132,11 +145,10 @@ Rectangle {
 //                            isLocked: model.locked
                             width: headerWidth
                             height: Logic.trackHeight(isCurve)
-                            current: false // index === currentTrack
+                            current: index === currentTrack
 //                            onIsLockedChanged: parametersRepeater.itemAt(index).isLocked = isLocked
                             onClicked: {
                                 currentTrack = index
-//                                timeline.selectTrackHead(currentTrack)
                             }
                         }
                     }
@@ -160,7 +172,11 @@ Rectangle {
             // This provides continuous scrubbing and scimming at the left/right edges.
             focus: true
             hoverEnabled: true
-            onClicked: producer.position = (scrollView.flickableItem.contentX + mouse.x) / timeScale
+            onClicked: {
+                producer.position = (scrollView.flickableItem.contentX + mouse.x) / timeScale
+                bubbleHelp.hide()
+            }
+            onWheel: Logic.onMouseWheel(wheel)
             onDoubleClicked: {
                 // Figure out which parameter row that is in.
                 for (var i = 0; i < parametersRepeater.count; i++) {
@@ -198,8 +214,9 @@ Rectangle {
             onReleased: scim = false
             onExited: scim = false
             onPositionChanged: {
-                if (mouse.modifiers === Qt.ShiftModifier || mouse.buttons === Qt.LeftButton) {
+                if (mouse.modifiers === (Qt.ShiftModifier | Qt.AltModifier) || mouse.buttons === Qt.LeftButton) {
                     producer.position = (scrollView.flickableItem.contentX + mouse.x) / timeScale
+                    bubbleHelp.hide()
                     scim = true
                 }
                 else
@@ -243,9 +260,12 @@ Rectangle {
                     // workaround to fix https://github.com/mltframework/shotcut/issues/777
                     flickableItem.onContentXChanged: rulerFlickable.contentX = flickableItem.contentX
 
-                    Item {
+                    MouseArea {
                         width: tracksContainer.width + headerWidth
                         height: trackHeaders.height + 30 // 30 is padding
+                        acceptedButtons: Qt.NoButton
+                        onWheel: Logic.onMouseWheel(wheel)
+
                         Column {
                             Rectangle {
                                 width: 1
@@ -259,7 +279,7 @@ Rectangle {
                                 model: parameters
                                 Rectangle {
                                     width: tracksContainer.width
-                                    color: (false /*index === currentTrack*/)? selectedTrackColor : (index % 2)? activePalette.alternateBase : activePalette.base
+                                    color: (index === currentTrack)? selectedTrackColor : (index % 2)? activePalette.alternateBase : activePalette.base
                                     height: Logic.trackHeight(model.isCurve)
                                 }
                             }
@@ -424,49 +444,65 @@ Rectangle {
         fast: true
     }
 
-    Menu {
+    Controls2.Menu {
         id: menu
-        MenuItem {
-            text: qsTr('Show Audio Waveforms')
-            checkable: true
-            checked: settings.timelineShowWaveforms
-            onTriggered: {
-                if (checked) {
-                    if (settings.timelineShowWaveforms) {
-                        settings.timelineShowWaveforms = checked
-                        redrawWaveforms()
+        Controls2.Menu {
+            title: qsTr('Options')
+            width: 310
+            Controls2.MenuItem {
+                text: qsTr('Show Audio Waveforms')
+                checkable: true
+                checked: settings.timelineShowWaveforms
+                onTriggered: {
+                    if (checked) {
+                        if (settings.timelineShowWaveforms) {
+                            settings.timelineShowWaveforms = checked
+                            redrawWaveforms()
+                        } else {
+                            settings.timelineShowWaveforms = checked
+                            producer.remakeAudioLevels()
+                        }
                     } else {
                         settings.timelineShowWaveforms = checked
-                        producer.remakeAudioLevels()
                     }
-                } else {
-                    settings.timelineShowWaveforms = checked
                 }
             }
+            Controls2.MenuItem {
+                text: qsTr('Use Higher Performance Waveforms')
+                checkable: true
+                checked: settings.timelineFramebufferWaveform
+                onTriggered: {
+                    settings.timelineFramebufferWaveform = checked
+                    if (settings.timelineShowWaveforms)
+                        multitrack.reload()
+                }
+            }
+            Controls2.MenuItem {
+                text: qsTr('Show Video Thumbnails')
+                checkable: true
+                checked: settings.timelineShowThumbnails
+                onTriggered: settings.timelineShowThumbnails = checked
+            }
+            Controls2.MenuItem {
+                text: qsTr('Center the Playhead') + (application.OS === 'OS X'? '    ⇧⌘P' : ' (Ctrl+Shift+P)')
+                checkable: true
+                checked: settings.timelineCenterPlayhead
+                onTriggered: settings.timelineCenterPlayhead = checked
+            }
+            Controls2.MenuItem {
+                text: qsTr('Scroll to Playhead on Zoom') + (application.OS === 'OS X'? '    ⌥⌘P' : ' (Ctrl+Alt+P)')
+                checkable: true
+                checked: settings.timelineScrollZoom
+                onTriggered: settings.timelineScrollZoom = checked
+            }
         }
-        MenuItem {
-            text: qsTr('Show Video Thumbnails')
-            checkable: true
-            checked: settings.timelineShowThumbnails
-            onTriggered: settings.timelineShowThumbnails = checked
-        }
-        MenuItem {
-            text: qsTr('Center the Playhead')
-            checkable: true
-            checked: settings.timelineCenterPlayhead
-            onTriggered: settings.timelineCenterPlayhead = checked
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: qsTr('Reload')
+        Controls2.MenuItem {
+            text: qsTr('Reload') + (application.OS === 'OS X'? '    F5' : ' (F5)')
             onTriggered: parameters.reload()
         }
-        onPopupVisibleChanged: {
-            if (visible && application.OS === 'Windows' && __popupGeometry.height > 0) {
-                // Try to fix menu running off screen. This only works intermittently.
-                menu.__yOffset = Math.min(0, Screen.height - (__popupGeometry.y + __popupGeometry.height + 40))
-                menu.__xOffset = Math.min(0, Screen.width - (__popupGeometry.x + __popupGeometry.width))
-            }
+        Controls2.MenuItem {
+            text: qsTr('Cancel')
+            onTriggered: menu.dismiss()
         }
     }
 
@@ -510,6 +546,7 @@ Rectangle {
         target: keyframes
         onZoomIn: zoomIn()
         onZoomOut: zoomOut()
+        onZoomToFit: zoomToFit()
         onResetZoom: resetZoom()
         onSeekPreviousSimple: Logic.seekPreviousSimple()
         onSeekNextSimple: Logic.seekNextSimple()

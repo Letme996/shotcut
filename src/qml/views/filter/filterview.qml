@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ Rectangle {
     onHeightChanged: _setLayout()
     
     function _setLayout() {
-        if (height > width - 200) {
+        if (height > width - attachedFilters.minimumWidth) {
             root.state = "portrait"
         } else {
             root.state = "landscape"
@@ -96,7 +96,7 @@ Rectangle {
 
     GridLayout {
         id: attachedContainer
-        columns: 6
+        columns: children.length - 1
         anchors {
             top: titleBackground.bottom
             left: parent.left
@@ -108,7 +108,8 @@ Rectangle {
 
         AttachedFilters {
             id: attachedFilters
-            Layout.columnSpan: 6
+            property int minimumWidth: application.OS === 'Windows'? 350 : 250
+            Layout.columnSpan: parent.columns
             Layout.fillWidth: true
             Layout.fillHeight: true
             onFilterClicked: {
@@ -126,15 +127,21 @@ Rectangle {
             id: addButton
             Layout.minimumWidth: height
             iconName: 'list-add'
+            iconSource: 'qrc:///icons/oxygen/32x32/actions/list-add.png'
             enabled: attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1.0 : 0.5
             tooltip: qsTr('Add a filter')
-            onClicked: filterMenu.open()
+            onClicked: {
+                if (application.confirmOutputFilter()) {
+                    filterMenu.open()
+                }
+            }
         }
         Button {
-            id: removeButton            
+            id: removeButton
             Layout.minimumWidth: height
             iconName: 'list-remove'
+            iconSource: 'qrc:///icons/oxygen/32x32/actions/list-remove.png'
             enabled: selectedIndex > -1
             opacity: enabled ? 1.0 : 0.5
             tooltip: qsTr('Remove selected filter')
@@ -160,12 +167,57 @@ Rectangle {
         Button {
             id: pasteButton
             Layout.minimumWidth: height
-            enabled: application.hasFiltersOnClipboard
+            enabled: application.hasFiltersOnClipboard && attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1.0 : 0.5
             iconName: 'edit-paste'
             iconSource: 'qrc:///icons/oxygen/32x32/actions/edit-paste.png'
             tooltip: qsTr('Paste filters')
             onClicked: application.pasteFilters()
+        }
+        Button { // separator
+            enabled: false
+            implicitWidth: 1
+            implicitHeight: 20
+        }
+        Button {
+            id: moveUpButton
+            Layout.minimumWidth: height
+            enabled: selectedIndex > 0
+            opacity: enabled ? 1.0 : 0.5
+            iconName: 'lift'
+            iconSource: 'qrc:///icons/oxygen/32x32/actions/lift.png'
+            tooltip: qsTr('Move filter up')
+            onClicked: attachedfiltersmodel.move(selectedIndex, --selectedIndex)
+        }
+        Button {
+            id: moveDownButton
+            Layout.minimumWidth: height
+            enabled: selectedIndex > -1 && selectedIndex + 1 < attachedfiltersmodel.rowCount()
+            opacity: enabled ? 1.0 : 0.5
+            iconName: 'overwrite'
+            iconSource: 'qrc:///icons/oxygen/32x32/actions/overwrite.png'
+            tooltip: qsTr('Move filter down')
+            onClicked: attachedfiltersmodel.move(selectedIndex, ++selectedIndex)
+        }
+        Button { // separator
+            enabled: false
+            implicitWidth: 1
+            implicitHeight: 20
+        }
+        Button {
+            id: deselectButton
+            Layout.minimumWidth: height
+            iconName: 'window-close'
+            iconSource: 'qrc:///icons/oxygen/32x32/actions/window-close.png'
+            enabled: selectedIndex > -1
+            opacity: enabled ? 1.0 : 0.5
+            tooltip: qsTr('Deselect the filter')
+            onClicked: {
+                clearCurrentFilter()
+                attachedFilters.setCurrentFilter(-2)
+                selectedIndex = -1
+                filter.deselect()
+            }
         }
         Item {
             Layout.fillWidth: true
@@ -221,7 +273,7 @@ Rectangle {
             }
             PropertyChanges {
                 target: attachedContainer
-                width: 200
+                width: attachedFilters.minimumWidth
                 height: root.height -
                     titleBackground.height - titleBackground.anchors.topMargin - titleBackground.anchors.bottomMargin -
                     attachedContainer.anchors.topMargin - attachedContainer.anchors.bottomMargin

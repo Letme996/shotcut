@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -525,5 +525,28 @@ Item {
     Connections {
         target: producer
         onPositionChanged: loadValues()
+    }
+
+    Connections {
+        target: parameters
+        onKeyframeAdded: {
+            switch (parameter) {
+            case 'lift_r':
+                filter.set('lift_r', liftwheel.redF * 2.0 - 1.0, position)
+                filter.set('lift_g', liftwheel.greenF * 2.0 - 1.0, position)
+                filter.set('lift_b', liftwheel.blueF * 2.0 - 1.0, position)
+                break;
+            case 'gamma_r':
+                filter.set('gamma_r', scaleWheelToValue(gammawheel.redF, gammaFactor), position)
+                filter.set('gamma_g', scaleWheelToValue(gammawheel.greenF, gammaFactor), position)
+                filter.set('gamma_b', scaleWheelToValue(gammawheel.blueF, gammaFactor), position)
+                break;
+            case 'gain_r':
+                filter.set('gain_r', scaleWheelToValue(gainwheel.redF, gainFactor), position)
+                filter.set('gain_g', scaleWheelToValue(gainwheel.greenF, gainFactor), position)
+                filter.set('gain_b', scaleWheelToValue(gainwheel.blueF, gainFactor), position)
+                break;
+            }
+        }
     }
 }

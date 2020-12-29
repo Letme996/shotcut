@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 Meltytech, LLC
+ * Copyright (c) 2015-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import QtQuick 2.5
 import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.1
 import Shotcut.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQml.Models 2.2
 
 Item {
@@ -54,7 +55,7 @@ Item {
             text: qsTr('Mode')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: modeCombo
             implicitWidth: 180
             model: ListModel {
@@ -68,12 +69,16 @@ Item {
                 ListElement { text: qsTr('Threshold'); value: 0.8 }
                 ListElement { text: qsTr('Blur'); value: 1.0 }
             }
-            onCurrentIndexChanged: {
+            textRole: 'text'
+            onActivated: {
                 filter.set(paramOperation, operationModel.get(currentIndex).value)
             }
         }
         UndoButton {
-            onClicked: modeCombo.currentIndex = 0
+            onClicked: {
+                filter.set(paramOperation, operationModel.get(0).value)
+                modeCombo.currentIndex = 0
+            }
         }
 
         Label {

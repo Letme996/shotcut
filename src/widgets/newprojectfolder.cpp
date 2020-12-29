@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Meltytech, LLC
+ * Copyright (c) 2018-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,16 +88,7 @@ void NewProjectFolder::showEvent(QShowEvent*)
         }
     }
 
-    // Update recent projects.
-    m_model.clear();
-    foreach (QString s, Settings.recent()) {
-        if (s.endsWith(".mlt")) {
-            QStandardItem* item = new QStandardItem(Util::baseName(s));
-            item->setToolTip(QDir::toNativeSeparators(s));
-            m_model.appendRow(item);
-        }
-    }
-
+    updateRecentProjects();
     setProjectFolderButtonText(Settings.projectsFolder());
     m_isOpening = false;
 }
@@ -116,9 +107,22 @@ bool NewProjectFolder::event(QEvent* event)
     return result;
 }
 
+void NewProjectFolder::updateRecentProjects()
+{
+    m_model.clear();
+    foreach (QString s, Settings.recent()) {
+        if (s.endsWith(".mlt")) {
+            QStandardItem* item = new QStandardItem(Util::baseName(s));
+            item->setToolTip(QDir::toNativeSeparators(s));
+            m_model.appendRow(item);
+        }
+    }
+}
+
 void NewProjectFolder::on_projectsFolderButton_clicked()
 {
-    QString dirName = QFileDialog::getExistingDirectory(this, tr("Projects Folder"), Settings.projectsFolder());
+    QString dirName = QFileDialog::getExistingDirectory(this, tr("Projects Folder"), Settings.projectsFolder(),
+        Util::getFileDialogOptions());
     if (!dirName.isEmpty()) {
         setProjectFolderButtonText(dirName);
         Settings.setProjectsFolder(dirName);
@@ -231,7 +235,7 @@ void NewProjectFolder::on_startButton_clicked()
 
 void NewProjectFolder::on_projectNameLineEdit_textChanged(const QString& arg1)
 {
-    m_projectName = arg1;
+    m_projectName = arg1.trimmed();
     ui->startButton->setDisabled(arg1.isEmpty());
 }
 
@@ -261,10 +265,13 @@ void NewProjectFolder::setColors()
 
 void NewProjectFolder::setProjectFolderButtonText(const QString& text)
 {
-    QString elidedText = ui->projectsFolderButton->fontMetrics().elidedText(text, Qt::ElideLeft, ui->recentListView->width() / 1.5);
+    auto path = QDir::toNativeSeparators(text);
+    QString elidedText = ui->projectsFolderButton->fontMetrics().elidedText(path, Qt::ElideLeft, ui->recentListView->width() / 1.5);
     ui->projectsFolderButton->setText(elidedText);
-    if (text != elidedText)
-        ui->projectsFolderButton->setToolTip(text);
+    if (path != elidedText)
+        ui->projectsFolderButton->setToolTip(path);
+    else
+        ui->projectsFolderButton->setToolTip(ui->label->toolTip());
 }
 
 void NewProjectFolder::on_recentListView_doubleClicked(const QModelIndex& index)

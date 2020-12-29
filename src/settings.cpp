@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,14 @@
 #include <QLocale>
 #include <QStandardPaths>
 #include <QFile>
+#include <QDir>
 #include <Logger.h>
 
 static const QString APP_DATA_DIR_KEY("appdatadir");
 static const QString SHOTCUT_INI_FILENAME("/shotcut.ini");
 static QScopedPointer<ShotcutSettings> instance;
 static QString appDataForSession;
+static const int kMaximumTrackHeight = 125;
 
 ShotcutSettings &ShotcutSettings::singleton()
 {
@@ -286,6 +288,16 @@ void ShotcutSettings::setShowConvertClipDialog(bool b)
     settings.setValue("showConvertClipDialog", b);
 }
 
+bool ShotcutSettings::encodeParallelProcessing() const
+{
+    return settings.value("encode/parallelProcessing", false).toBool();
+}
+
+void ShotcutSettings::setEncodeParallelProcessing(bool b)
+{
+    settings.setValue("encode/parallelProcessing", b);
+}
+
 int ShotcutSettings::playerAudioChannels() const
 {
     return settings.value("player/audioChannels", 2).toInt();
@@ -313,7 +325,9 @@ void ShotcutSettings::setPlayerDeinterlacer(const QString& s)
 
 QString ShotcutSettings::playerExternal() const
 {
-    return settings.value("player/external", "").toString();
+    auto result = settings.value("player/external", "").toString();
+    // "sdi" is no longer supported DVEO VidPort
+    return result == "sdi"? "" : result;
 }
 
 void ShotcutSettings::setPlayerExternal(const QString& s)
@@ -447,6 +461,26 @@ void ShotcutSettings::setPlayerZoom(float f)
     settings.setValue("player/zoom", f);
 }
 
+int ShotcutSettings::playerPreviewScale() const
+{
+    return settings.value("player/previewScale", 0).toInt();
+}
+
+void ShotcutSettings::setPlayerPreviewScale(int i)
+{
+    settings.setValue("player/previewScale", i);
+}
+
+int ShotcutSettings::playerVideoDelayMs() const
+{
+    return settings.value("player/videoDelayMs", 0).toInt();
+}
+
+void ShotcutSettings::setPlayerVideoDelayMs(int i)
+{
+    settings.setValue("player/videoDelayMs", i);
+}
+
 QString ShotcutSettings::playlistThumbnails() const
 {
     return settings.value("playlist/thumbnails", "small").toString();
@@ -466,6 +500,17 @@ bool ShotcutSettings::playlistAutoplay() const
 void ShotcutSettings::setPlaylistAutoplay(bool b)
 {
     settings.setValue("playlist/autoplay", b);
+}
+
+bool ShotcutSettings::timelineDragScrub() const
+{
+    return settings.value("timeline/dragScrub", false).toBool();
+}
+
+void ShotcutSettings::setTimelineDragScrub(bool b)
+{
+    settings.setValue("timeline/dragScrub", b);
+    emit timelineDragScrubChanged();
 }
 
 bool ShotcutSettings::timelineShowWaveforms() const
@@ -536,12 +581,34 @@ void ShotcutSettings::setTimelineCenterPlayhead(bool b)
 
 int ShotcutSettings::timelineTrackHeight() const
 {
-    return settings.value("timeline/trackHeight", 50).toInt();
+    return qMin(settings.value("timeline/trackHeight", 50).toInt(), kMaximumTrackHeight);
 }
 
 void ShotcutSettings::setTimelineTrackHeight(int n)
 {
-    settings.setValue("timeline/trackHeight", n);
+    settings.setValue("timeline/trackHeight", qMin(n, kMaximumTrackHeight));
+}
+
+bool ShotcutSettings::timelineScrollZoom() const
+{
+    return settings.value("timeline/scrollZoom", true).toBool();
+}
+
+void ShotcutSettings::setTimelineScrollZoom(bool b)
+{
+    settings.setValue("timeline/scrollZoom", b);
+    emit timelineScrollZoomChanged();
+}
+
+bool ShotcutSettings::timelineFramebufferWaveform() const
+{
+    return settings.value("timeline/framebufferWaveform", true).toBool();
+}
+
+void ShotcutSettings::setTimelineFramebufferWaveform(bool b)
+{
+    settings.setValue("timeline/framebufferWaveform", b);
+    emit timelineFramebufferWaveformChanged();
 }
 
 QString ShotcutSettings::filterFavorite(const QString& filterName)
@@ -598,6 +665,17 @@ void ShotcutSettings::setVideoOutDuration(double d)
     emit videoOutDurationChanged();
 }
 
+bool ShotcutSettings::askOutputFilter() const
+{
+    return settings.value("filter/askOutput", true).toBool();
+}
+
+void ShotcutSettings::setAskOutputFilter(bool b)
+{
+    settings.setValue("filter/askOutput", b);
+    emit askOutputFilterChanged();
+}
+
 bool ShotcutSettings::loudnessScopeShowMeter(const QString& meter) const
 {
     return settings.value("scope/loudness/" + meter, true).toBool();
@@ -642,7 +720,7 @@ void ShotcutSettings::setCheckUpgradeAutomatic(bool b)
     settings.setValue("checkUpgradeAutomatic", b);
 }
 
-bool ShotcutSettings::askUpgradeAutmatic()
+bool ShotcutSettings::askUpgradeAutomatic()
 {
     return settings.value("askUpgradeAutmatic", true).toBool();
 }
@@ -695,7 +773,12 @@ void ShotcutSettings::setAppDataLocally(const QString& location)
 
 QStringList ShotcutSettings::layouts() const
 {
-    return settings.value("layout/layouts").toStringList();
+    QStringList result;
+    for (const auto& s : settings.value("layout/layouts").toStringList()) {
+        if (!s.startsWith("__"))
+            result << s;
+    }
+    return result;
 }
 
 bool ShotcutSettings::setLayout(const QString& name, const QByteArray& geometry, const QByteArray& state)
@@ -741,6 +824,16 @@ bool ShotcutSettings::removeLayout(const QString& name)
     return false;
 }
 
+int ShotcutSettings::layoutMode() const
+{
+    return settings.value("layout/mode", -1).toInt();
+}
+
+void ShotcutSettings::setLayoutMode(int mode)
+{
+    settings.setValue("layout/mode", mode);
+}
+
 bool ShotcutSettings::clearRecent() const
 {
     return settings.value("clearRecent", false).toBool();
@@ -759,6 +852,52 @@ QString ShotcutSettings::projectsFolder() const
 void ShotcutSettings::setProjectsFolder(const QString &path)
 {
     settings.setValue("projectsFolder", path);
+}
+
+bool ShotcutSettings::proxyEnabled() const
+{
+    return settings.value("proxy/enabled", false).toBool();
+}
+
+void ShotcutSettings::setProxyEnabled(bool b)
+{
+    settings.setValue("proxy/enabled", b);
+}
+
+QString ShotcutSettings::proxyFolder() const
+{
+    QDir dir(appDataLocation());
+    const char* subfolder = "proxies";
+    if (!dir.cd(subfolder)) {
+        if (dir.mkdir(subfolder))
+            dir.cd(subfolder);
+    }
+    return settings.value("proxy/folder", dir.path()).toString();
+}
+
+void ShotcutSettings::setProxyFolder(const QString& path)
+{
+    settings.setValue("proxy/folder", path);
+}
+
+bool ShotcutSettings::proxyUseProjectFolder() const
+{
+    return settings.value("proxy/useProjectFolder", true).toBool();
+}
+
+void ShotcutSettings::setProxyUseProjectFolder(bool b)
+{
+    settings.setValue("proxy/useProjectFolder", b);
+}
+
+bool ShotcutSettings::proxyUseHardware() const
+{
+    return settings.value("proxy/useHardware", false).toBool();
+}
+
+void ShotcutSettings::setProxyUseHardware(bool b)
+{
+    settings.setValue("proxy/useHardware", b);
 }
 
 int ShotcutSettings::undoLimit() const

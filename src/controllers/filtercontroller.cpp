@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,8 +56,17 @@ void FilterController::loadFilterMetadata() {
             QQmlComponent component(QmlUtilities::sharedEngine(), subdir.absoluteFilePath(fileName));
             QmlMetadata *meta = qobject_cast<QmlMetadata*>(component.create());
             if (meta) {
-                // Check if mlt_service is available.
-                if (mltFilters->get_data(meta->mlt_service().toLatin1().constData())) {
+                QScopedPointer<Mlt::Properties> mltMetadata(MLT.repository()->metadata(filter_type, meta->mlt_service().toLatin1().constData()));
+                QString version;
+                if (mltMetadata && mltMetadata->is_valid() && mltMetadata->get("version")) {
+                    version = QString::fromLatin1(mltMetadata->get("version"));
+                    if (version.startsWith("lavfi"))
+                        version.remove(0, 5);
+                }
+
+                    // Check if mlt_service is available.
+                if (mltFilters->get_data(meta->mlt_service().toLatin1().constData()) &&
+                        (version.isEmpty() || meta->isMltVersion(version))) {
                     LOG_DEBUG() << "added filter" << meta->name();
                     meta->loadSettings();
                     meta->setPath(subdir);
@@ -65,19 +74,13 @@ void FilterController::loadFilterMetadata() {
                     addMetadata(meta);
 
                     // Check if a keyframes minimum version is required.
-                    QScopedPointer<Mlt::Properties> mltMetadata(MLT.repository()->metadata(filter_type, meta->mlt_service().toLatin1().constData()));
-                    if (mltMetadata && mltMetadata->is_valid() && mltMetadata->get("version") && meta->keyframes()) {
-                        QString version = QString::fromLatin1(mltMetadata->get("version"));
-                        if (version.startsWith("lavfi"))
-                            version.remove(0, 5);
+                    if (!version.isEmpty() && meta->keyframes()) {
                         meta->setProperty("version", version);
                         meta->keyframes()->checkVersion(version);
-                        // MLT frei0r module did get mlt_animation support until v6.10 (6.9 while in development).
-                        if (meta->mlt_service().startsWith("frei0r.")) {
-                            if (mlt_version_get_major() < 6 || mlt_version_get_minor() < 9)
-                                meta->keyframes()->setDisabled();
-                        }
                     }
+
+                    if (meta->isDeprecated())
+                        meta->setName(meta->name() + " " + tr("(DEPRECATED)"));
                 }
             } else if (!meta) {
                 LOG_WARNING() << component.errorString();
@@ -141,6 +144,15 @@ void FilterController::setCurrentFilter(int attachedIndex, bool isNew)
     }
     m_currentFilterIndex = attachedIndex;
 
+    // VUIs may instruct MLT filters to not render if they are doing the rendering
+    // theirself, for example, Text: Rich. Component.onDestruction is not firing.
+    if (m_mltFilter) {
+        if (m_mltFilter->get_int("_hide")) {
+            m_mltFilter->clear("_hide");
+            MLT.refreshConsumer();
+        }
+    }
+
     QmlMetadata* meta = m_attachedModel.getMetadata(m_currentFilterIndex);
     QmlFilter* filter = 0;
     if (meta) {
@@ -188,7 +200,9 @@ void FilterController::onFilterOutChanged(int delta, Mlt::Filter* filter)
 
 void FilterController::handleAttachedModelChange()
 {
-    MLT.refreshConsumer();
+    if (m_currentFilter) {
+        emit m_currentFilter->changed("disable");
+    }
 }
 
 void FilterController::handleAttachedModelAboutToReset()
@@ -232,6 +246,11 @@ void FilterController::removeCurrent()
 {
     if (m_currentFilterIndex > -1)
         m_attachedModel.remove(m_currentFilterIndex);
+}
+
+void FilterController::onProducerChanged()
+{
+    emit m_attachedModel.trackTitleChanged();
 }
 
 void FilterController::addMetadata(QmlMetadata* meta)

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2014-2016 Meltytech, LLC
- * Author: Dan Dennedy <dan@dennedy.org>
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,7 +83,16 @@ void LumaMixTransition::on_invertCheckBox_clicked(bool checked)
     if (transition && transition->is_valid()) {
         transition->set("invert", checked);
         MLT.refreshConsumer();
+        emit modified();
     }
+}
+
+static void setColor(Mlt::Transition* transition, int value)
+{
+    qreal r = qreal(value) / 100.0;
+    QColor color = QColor::fromRgbF(r, r, r);
+    QString resource = QString("color:%1").arg(color.name());
+    transition->set("resource", resource.toLatin1().constData());
 }
 
 void LumaMixTransition::on_softnessSlider_valueChanged(int value)
@@ -92,14 +100,12 @@ void LumaMixTransition::on_softnessSlider_valueChanged(int value)
     QScopedPointer<Mlt::Transition> transition(getTransition("luma"));
     if (transition && transition->is_valid()) {
         if (kLumaComboCutIndex == ui->lumaCombo->currentIndex()) {
-            qreal r = qreal(value) / 100.0;
-            QColor color = QColor::fromRgbF(r, r, r);
-            QString resource = QString("color:%1").arg(color.name());
-            transition->set("resource", resource.toLatin1().constData());
+            setColor(transition.data(), value);
         } else {
             transition->set("softness", value / 100.0);
         }
         MLT.refreshConsumer();
+        emit modified();
     }
 }
 
@@ -144,7 +150,7 @@ Mlt::Transition *LumaMixTransition::getTransition(const QString &name)
         }
         service.reset(service->producer());
     }
-    return 0;
+    return nullptr;
 }
 
 void LumaMixTransition::updateCustomLumaLabel(Mlt::Transition &transition)
@@ -175,9 +181,10 @@ void LumaMixTransition::on_lumaCombo_activated(int index)
         if (index == kLumaComboDissolveIndex) {
             transition->set("resource", "");
             ui->softnessLabel->setText(tr("Softness"));
+            transition->set("softness", ui->softnessSlider->value() / 100.0);
         } else if (index == kLumaComboCutIndex) { // Cut
             ui->softnessLabel->setText(tr("Position"));
-            ui->softnessSlider->setValue(50);
+            setColor(transition.data(), ui->softnessSlider->value());
         } else if (index == kLumaComboCustomIndex) {
             ui->softnessLabel->setText(tr("Softness"));
             // Custom file
@@ -186,11 +193,11 @@ void LumaMixTransition::on_lumaCombo_activated(int index)
             path.append("/*");
 #endif
             QString filename = QFileDialog::getOpenFileName(this, tr("Open File"), path,
-                tr("Images (*.bmp *.jpeg *.jpg *.pgm *.png *.svg *.tga *.tif *.tiff);;All Files (*)"));
+                    QString(), nullptr, Util::getFileDialogOptions());
             activateWindow();
             if (!filename.isEmpty()) {
                 transition->set("resource", filename.toUtf8().constData());
-                MAIN.getHash(*transition);
+                Util::getHash(*transition);
             }
         } else {
             ui->softnessLabel->setText(tr("Softness"));
@@ -208,5 +215,6 @@ void LumaMixTransition::on_lumaCombo_activated(int index)
         }
         updateCustomLumaLabel(*transition);
         MLT.refreshConsumer();
+        emit modified();
     }
 }

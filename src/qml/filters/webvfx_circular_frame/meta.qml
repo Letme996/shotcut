@@ -6,6 +6,8 @@ Metadata {
     objectName: 'webvfxCircularFrame'
     name: qsTr("Crop: Circle")
     mlt_service: "webvfx"
+    isHidden: true
+    isDeprecated: true
     qml: "ui.qml"
     keyframes {
         allowAnimateIn: true

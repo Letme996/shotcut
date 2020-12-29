@@ -6,6 +6,8 @@ Metadata {
     objectName: 'webvfxClip'
     name: qsTr("Crop: Rectangle")
     mlt_service: "webvfx"
+    isHidden: true
+    isDeprecated: true
     qml: "ui.qml"
     vui: "vui.qml"
     keyframes {
@@ -17,6 +19,7 @@ Metadata {
                 name: qsTr('Position / Size')
                 property: 'rect'
                 isSimple: true
+                isRectangle: true
             },
             Parameter {
                 name: qsTr('Corner radius')

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-function scrollIfNeeded() {
+function scrollIfNeeded(center) {
     var x = timeline.position * multitrack.scaleFactor;
     if (!scrollView) return;
-    if (settings.timelineCenterPlayhead) {
+    if (settings.timelineCenterPlayhead || center) {
         if (x > scrollView.flickableItem.contentX + scrollView.width * 0.5)
             scrollView.flickableItem.contentX = x - scrollView.width * 0.5;
         else if (x < scrollView.width * 0.5)
@@ -87,6 +87,8 @@ function dragging(pos, duration) {
             for (i = 0; i < tracksRepeater.count; i++)
                 tracksRepeater.itemAt(i).snapDrop(pos)
         }
+    } else {
+        currentTrack = 0
     }
 }
 
@@ -111,33 +113,41 @@ function clamp(x, minimum, maximum) {
     return Math.min(Math.max(x, minimum), maximum)
 }
 
+function scrollMax() {
+    var maxWidth = Math.max(scrollView.flickableItem.contentWidth - scrollView.width + 14, 0)
+    var maxHeight = Math.max(scrollView.flickableItem.contentHeight - scrollView.height + 14, 0)
+    return Qt.point(maxWidth, maxHeight)
+}
+
 function onMouseWheel(wheel) {
-    if ((wheel.modifiers & Qt.ControlModifier) || (wheel.modifiers & Qt.ShiftModifier)) {
+    var n
+    if ((wheel.modifiers === Qt.ControlModifier) || (wheel.modifiers === Qt.ShiftModifier)) {
         // Zoom
         if (wheel.modifiers & Qt.ControlModifier) {
-            adjustZoom(wheel.angleDelta.y / 720)
+            adjustZoom(wheel.angleDelta.y / 2000, wheel.x)
         }
         if (wheel.modifiers & Qt.ShiftModifier) {
-            multitrack.trackHeight = Math.max(30, multitrack.trackHeight + wheel.angleDelta.y / 5)
+            n = (application.OS === 'OS X')? wheel.angleDelta.x : wheel.angleDelta.y
+            multitrack.trackHeight = Math.max(10, multitrack.trackHeight + n / 25)
         }
     } else {
         // Scroll
-        var maxWidth = Math.max(scrollView.flickableItem.contentWidth - scrollView.width + 14, 0)
-        var maxHeight = Math.max(scrollView.flickableItem.contentHeight - scrollView.height + 14, 0)
-        if (wheel.pixelDelta.x || wheel.pixelDelta.y) {
-            // Track pads provide both horizontal and vertical.
+        if ((wheel.pixelDelta.x || wheel.pixelDelta.y) && wheel.modifiers === Qt.NoModifier) {
             var x = wheel.pixelDelta.x
             var y = wheel.pixelDelta.y
+            // Track pads provide both horizontal and vertical.
             if (!y || Math.abs(x) > 2)
-                scrollView.flickableItem.contentX = clamp(scrollView.flickableItem.contentX - x, 0, maxWidth)
-            scrollView.flickableItem.contentY = clamp(scrollView.flickableItem.contentY - y, 0, maxHeight)
+                scrollView.flickableItem.contentX = clamp(scrollView.flickableItem.contentX - x, 0, scrollMax().x)
+            scrollView.flickableItem.contentY = clamp(scrollView.flickableItem.contentY - y, 0, scrollMax().y)
         } else {
             // Vertical only mouse wheel requires modifier for vertical scroll.
-            var y = Math.round(wheel.angleDelta.y / 5)
-            if ((wheel.modifiers & Qt.AltModifier) || (wheel.modifiers & Qt.MetaModifier))
-                scrollView.flickableItem.contentX = clamp(scrollView.flickableItem.contentX - y, 0, maxWidth)
-            else
-                scrollView.flickableItem.contentY = clamp(scrollView.flickableItem.contentY - y, 0, maxHeight)
+            if (wheel.modifiers === Qt.AltModifier) {
+                n = Math.round((application.OS === 'OS X'? wheel.angleDelta.y : wheel.angleDelta.x) / 2)
+                scrollView.flickableItem.contentY = clamp(scrollView.flickableItem.contentY - n, 0, scrollMax().y)
+            } else {
+                n = Math.round(wheel.angleDelta.y / 2)
+                scrollView.flickableItem.contentX = clamp(scrollView.flickableItem.contentX - n, 0, scrollMax().x)
+            }
         }
     }
 }

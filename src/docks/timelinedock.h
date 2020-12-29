@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,18 +53,13 @@ public:
     int position() const { return m_position; }
     void setPosition(int position);
     Mlt::ClipInfo* getClipInfo(int trackIndex, int clipIndex);
-    Mlt::Producer* producerForClip(int trackIndex, int clipIndex);
+    Mlt::Producer producerForClip(int trackIndex, int clipIndex);
     int clipIndexAtPlayhead(int trackIndex = -1);
     int clipIndexAtPosition(int trackIndex, int position);
     void chooseClipAtPosition(int position, int& trackIndex, int& clipIndex);
     void setCurrentTrack(int currentTrack);
     int currentTrack() const;
     int clipCount(int trackIndex) const;
-    void zoomIn();
-    void zoomOut();
-    void resetZoom();
-    void makeTracksShorter();
-    void makeTracksTaller();
     void setSelectionFromJS(const QVariantList& list);
     void setSelection(QList<QPoint> selection = QList<QPoint>(), int trackIndex = -1, bool isMultitrack = false);
     QVariantList selectionForJS() const;
@@ -82,6 +77,8 @@ public:
     Q_INVOKABLE bool isFloating() const { return QDockWidget::isFloating(); }
     Q_INVOKABLE void copyToSource();
     Q_INVOKABLE static void openProperties();
+    void emitSelectedChanged(const QVector<int> &roles);
+    void replaceClipsWithHash(const QString& hash, Mlt::Producer& producer);
 
 signals:
     void currentTrackChanged();
@@ -100,8 +97,14 @@ signals:
     void clipCopied();
     void clipMoved(int fromTrack, int toTrack, int clipIndex, int position, bool ripple);
     void filteredClicked();
-    void imageDurationChanged();
+    void durationChanged();
     void transitionAdded(int trackIndex, int clipIndex, int position, bool ripple);
+    void zoomIn();
+    void zoomOut();
+    void zoomToFit();
+    void resetZoom();
+    void makeTracksShorter();
+    void makeTracksTaller();
 
 public slots:
     void addAudioTrack();
@@ -114,7 +117,7 @@ public slots:
     void lift(int trackIndex, int clipIndex);
     void removeSelection(bool withCopy = false);
     void liftSelection();
-    void selectTrack(int by);
+    void incrementCurrentTrack(int by);
     void selectTrackHead(int trackIndex);
     void selectMultitrack();
     void copyClip(int trackIndex, int clipIndex);
@@ -129,7 +132,7 @@ public slots:
     bool trimClipOut(int trackIndex, int clipIndex, int delta, bool ripple);
     void insert(int trackIndex, int position = -1, const QString &xml = QString(), bool seek = true);
     void overwrite(int trackIndex, int position = -1, const QString &xml = QString(), bool seek = true);
-    void appendFromPlaylist(Mlt::Playlist* playlist);
+    void appendFromPlaylist(Mlt::Playlist* playlist, bool skipProxy);
     void splitClip(int trackIndex = -1, int clipIndex = -1);
     void fadeIn(int trackIndex, int clipIndex = -1, int duration = -1);
     void fadeOut(int trackIndex, int clipIndex = -1, int duration = -1);
@@ -148,6 +151,8 @@ public slots:
     void detachAudio(int trackIndex, int clipIndex);
     void selectAll();
     bool blockSelection(bool block);
+    void onProducerModified();
+    void replace(int trackIndex, int clipIndex, const QString& xml = QString());
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event);

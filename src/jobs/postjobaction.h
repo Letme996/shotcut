@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Meltytech, LLC
+ * Copyright (c) 2018-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #define POSTJOBACTION_H
 
 #include <QString>
+#include <QUuid>
 
 class PostJobAction
 {
@@ -42,10 +43,10 @@ protected:
     QString m_dstFile;
 };
 
-class ReverseFilePostJobAction : public FilePropertiesPostJobAction
+class ReverseOpenPostJobAction : public FilePropertiesPostJobAction
 {
 public:
-    ReverseFilePostJobAction(const QString& srcFile, const QString& dstFile, const QString& fileNameToRemove)
+    ReverseOpenPostJobAction(const QString& srcFile, const QString& dstFile, const QString& fileNameToRemove)
         : FilePropertiesPostJobAction(srcFile, dstFile)
         , m_fileNameToRemove(fileNameToRemove)
         {}
@@ -53,6 +54,66 @@ public:
 
 private:
     QString m_fileNameToRemove;
+};
+
+class ReverseReplacePostJobAction : public FilePropertiesPostJobAction
+{
+public:
+    ReverseReplacePostJobAction(const QString& srcFile, const QString& dstFile, const QString& fileNameToRemove, const QUuid& srcUuid, int in)
+        : FilePropertiesPostJobAction(srcFile, dstFile)
+        , m_fileNameToRemove(fileNameToRemove)
+        , m_uuid(srcUuid)
+        , m_in(in)
+        {}
+    void doAction();
+
+private:
+    QString m_fileNameToRemove;
+    QUuid m_uuid;
+    int m_in;
+};
+
+class ConvertReplacePostJobAction : public FilePropertiesPostJobAction
+{
+public:
+    ConvertReplacePostJobAction(const QString& srcFile, const QString& dstFile, const QString& srcHash)
+        : FilePropertiesPostJobAction(srcFile, dstFile)
+        , m_hash(srcHash)
+        {}
+    void doAction();
+
+private:
+    QString m_hash;
+};
+
+class ProxyReplacePostJobAction : public PostJobAction
+{
+public:
+    ProxyReplacePostJobAction(const QString& srcFile, const QString& dstFile, const QString& srcHash)
+        : PostJobAction()
+        , m_srcFile(srcFile)
+        , m_dstFile(dstFile)
+        , m_hash(srcHash)
+        {}
+    void doAction();
+
+private:
+    QString m_srcFile;
+    QString m_dstFile;
+    QString m_hash;
+};
+
+class ProxyFinalizePostJobAction : public PostJobAction
+{
+public:
+    ProxyFinalizePostJobAction(const QString& dstFile)
+        : PostJobAction()
+        , m_dstFile(dstFile)
+        {}
+    void doAction();
+
+private:
+    QString m_dstFile;
 };
 
 #endif // POSTJOBACTION_H

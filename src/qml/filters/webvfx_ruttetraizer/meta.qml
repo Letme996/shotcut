@@ -7,4 +7,6 @@ Metadata {
     name: "Rutt-Etra-Izer"
     mlt_service: "webvfx"
     qml: "ui.qml"
+    isDeprecated: true
+    isHidden: true
 }

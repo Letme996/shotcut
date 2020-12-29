@@ -7,6 +7,8 @@ Metadata {
     name: qsTr('Choppy')
     mlt_service: 'webvfx'
     qml: 'ui.qml'
+    isHidden: true
+    isDeprecated: true
     keyframes {
         allowAnimateIn: true
         allowAnimateOut: true

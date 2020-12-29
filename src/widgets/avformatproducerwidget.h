@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Meltytech, LLC
+ * Copyright (c) 2012-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,10 @@ public:
     Mlt::Producer* newProducer(Mlt::Profile&);
     void setProducer(Mlt::Producer*);
 
+public slots:
+    void updateDuration();
+    void rename();
+
 signals:
     void producerChanged(Mlt::Producer*);
     void producerReopened();
@@ -54,8 +58,6 @@ private slots:
     void onProducerChanged();
 
     void onFrameDecoded();
-
-    void on_resetButton_clicked();
 
     void on_videoTrackComboBox_activated(int index);
 
@@ -72,6 +74,8 @@ private slots:
     void on_durationSpinBox_editingFinished();
 
     void on_speedSpinBox_editingFinished();
+
+    void on_pitchCheckBox_stateChanged(int state);
 
     void on_syncSlider_valueChanged(int value);
 
@@ -97,15 +101,35 @@ private slots:
 
     void on_rangeComboBox_activated(int index);
 
+    void on_filenameLabel_editingFinished();
+
+    void on_convertButton_clicked();
+
+    void on_actionDisableProxy_triggered(bool checked);
+
+    void on_actionMakeProxy_triggered();
+
+    void on_actionDeleteProxy_triggered();
+
+    void on_actionCopyHashCode_triggered();
+
+    void on_proxyButton_clicked();
+
+    void on_actionReset_triggered();
+
+    void on_actionSetEquirectangular_triggered();
+
 private:
     Ui::AvformatProducerWidget *ui;
     int m_defaultDuration;
     bool m_recalcDuration;
     bool m_askToConvert;
+    bool m_userDefinedCaption;
 
     void reopen(Mlt::Producer* p);
     void recreateProducer();
     void convert(TranscodeDialog& dialog);
+    bool revertToOriginalResource();
 };
 
 

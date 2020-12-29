@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,8 +42,13 @@ FiltersDock::FiltersDock(MetadataModel* metadataModel, AttachedFiltersModel* att
     QIcon filterIcon = QIcon::fromTheme("view-filter", QIcon(":/icons/oxygen/32x32/actions/view-filter.png"));
     setWindowIcon(filterIcon);
     toggleViewAction()->setIcon(windowIcon());
-    setMinimumWidth(300);
     m_qview.setFocusPolicy(Qt::StrongFocus);
+    m_qview.quickWindow()->setPersistentSceneGraph(false);
+#ifdef Q_OS_MAC
+    setFeatures(DockWidgetClosable | DockWidgetMovable);
+#else
+    m_qview.setAttribute(Qt::WA_AcceptTouchEvents);
+#endif
     setWidget(&m_qview);
 
     QmlUtilities::setCommonProperties(m_qview.rootContext());
@@ -89,8 +94,11 @@ bool FiltersDock::event(QEvent *event)
 void FiltersDock::keyPressEvent(QKeyEvent *event)
 {
     QDockWidget::keyPressEvent(event);
-    if (event->key() == Qt::Key_F)
+    if (event->key() == Qt::Key_F) {
         event->ignore();
+    } else if (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right) {
+        event->accept();
+    }
 }
 
 void FiltersDock::onSeeked(int position)

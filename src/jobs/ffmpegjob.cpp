@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Meltytech, LLC
+ * Copyright (c) 2016-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 
 FfmpegJob::FfmpegJob(const QString& name, const QStringList& args, bool isOpenLog)
     : AbstractJob(name)
+    , m_outputMsgRead(false)
     , m_totalFrames(0)
     , m_previousPercent(0)
     , m_isOpenLog(isOpenLog)
@@ -43,7 +44,9 @@ FfmpegJob::FfmpegJob(const QString& name, const QStringList& args, bool isOpenLo
 
 FfmpegJob::~FfmpegJob()
 {
-
+    if (objectName().contains("proxies") && objectName().contains(".pending.")){
+        QFile::remove(objectName());
+    }
 }
 
 void FfmpegJob::start()
@@ -56,6 +59,8 @@ void FfmpegJob::start()
     QProcess::start(ffmpegPath.absoluteFilePath(), m_args);
 #else
     m_args.prepend(ffmpegPath.absoluteFilePath());
+    m_args.prepend("3");
+    m_args.prepend("-n");
     QProcess::start("nice", m_args);
 #endif
     AbstractJob::start();
@@ -82,6 +87,13 @@ void FfmpegJob::onReadyRead()
             m_duration = msg.mid(msg.indexOf("Duration:") + 9);
             m_duration = m_duration.left(m_duration.indexOf(','));
             emit progressUpdated(m_item, 0);
+            appendToLog(msg);
+        }
+        else if (!m_outputMsgRead) {
+            // Wait for the "Output" then read the output fps to calculate number of frames.
+            if (msg.contains("Output ")) {
+                m_outputMsgRead = true;
+            }
             appendToLog(msg);
         }
         else if (!m_totalFrames && msg.contains(" fps")) {

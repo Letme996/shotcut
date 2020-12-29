@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,12 +20,16 @@
 #include "mltcontroller.h"
 #include "controllers/filtercontroller.h"
 #include "models/attachedfiltersmodel.h"
+#include "glwidget.h"
+#include "settings.h"
 #include <QApplication>
 #include <QSysInfo>
 #include <QCursor>
 #include <QPalette>
 #include <QStyle>
 #include <QFileInfo>
+#include <QMessageBox>
+#include <QCheckBox>
 #ifdef Q_OS_WIN
 #include <QLocale>
 #else
@@ -111,8 +115,10 @@ void QmlApplication::copyFilters()
 void QmlApplication::pasteFilters()
 {
     QScopedPointer<Mlt::Producer> producer(new Mlt::Producer(MAIN.filterController()->attachedModel()->producer()));
-    MLT.pasteFilters(producer.data());
-    emit QmlApplication::singleton().filtersPasted(MAIN.filterController()->attachedModel()->producer());
+    if (confirmOutputFilter()) {
+        MLT.pasteFilters(producer.data());
+        emit QmlApplication::singleton().filtersPasted(MAIN.filterController()->attachedModel()->producer());
+    }
 }
 
 QString QmlApplication::timecode(int frames)
@@ -154,3 +160,46 @@ bool QmlApplication::isProjectFolder()
     return (!MLT.projectFolder().isEmpty() && dir.exists());
 }
 
+qreal QmlApplication::devicePixelRatio()
+{
+    return MAIN.devicePixelRatioF();
+}
+
+void QmlApplication::showStatusMessage(const QString& message, int timeoutSeconds)
+{
+    MAIN.showStatusMessage(message, timeoutSeconds);
+}
+
+int QmlApplication::maxTextureSize()
+{
+    Mlt::GLWidget* glw = qobject_cast<Mlt::GLWidget*>(MLT.videoWidget());
+    return glw? glw->maxTextureSize() : 0;
+}
+
+bool QmlApplication::confirmOutputFilter()
+{
+    bool result = true;
+    QScopedPointer<Mlt::Producer> producer(new Mlt::Producer(MAIN.filterController()->attachedModel()->producer()));
+    if (producer->is_valid()
+            && tractor_type == producer->type()
+            && !producer->get(kShotcutTransitionProperty)
+            && MAIN.filterController()->attachedModel()->rowCount() == 0
+            && Settings.askOutputFilter()) {
+        QMessageBox dialog(QMessageBox::Warning,
+           qApp->applicationName(),
+           tr("<p>Do you really want to add filters to <b>Output</b>?</p>"
+              "<p><b>Timeline > Output</b> is currently selected. "
+              "Adding filters to <b>Output</b> affects ALL clips in the "
+              "timeline including new ones that will be added.</p>"),
+           QMessageBox::No | QMessageBox::Yes, &MAIN);
+        dialog.setWindowModality(dialogModality());
+        dialog.setDefaultButton(QMessageBox::No);
+        dialog.setEscapeButton(QMessageBox::Yes);
+        dialog.setCheckBox(new QCheckBox(tr("Do not show this anymore.", "confirm output filters dialog")));
+        result = dialog.exec() == QMessageBox::Yes;
+        if (dialog.checkBox()->isChecked()) {
+            Settings.setAskOutputFilter(false);
+        }
+    }
+    return result;
+}

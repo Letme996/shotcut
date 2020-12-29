@@ -72,11 +72,13 @@ RowLayout {
                     // If the user changed color but left alpha at 0,
                     // they probably want to reset alpha to opaque.
                     console.log('currentColor.a=' + currentColor.a + ' currentColor=' + currentColor + ' myColor=' + myColor)
-                    if (currentColor.a === 0 && !Qt.colorEqual(currentColor, myColor))
+                    if (currentColor.a === 0 && (!Qt.colorEqual(currentColor, myColor) ||
+                                                 (Qt.colorEqual(currentColor, 'transparent') && Qt.colorEqual(myColor, 'transparent')))) {
                         currentColor.a = 1.0
+                    }
                     parent.parent._setStopColor(handelRect.stopIndex, String(currentColor))
                 }
-                modality: Qt.ApplicationModal
+                modality: application.dialogModality
             }
 
             ToolTip { text: qsTr('Color: %1\nClick to change').arg(color) }
@@ -98,7 +100,7 @@ RowLayout {
         }
 
         var newStops = [];
-        var stepSize = colors.length? 1.0 / (colors.length - 1) : 0
+        var stepSize = (colors.length > 1)? 1.0 / (colors.length - 1) : 0
         for (var idx = 0; idx < colors.length; idx++) {
             newStops.push(stopComponent.createObject(gradientView, {"position":stepSize * idx,"color":colors[idx]}));
         }
@@ -187,7 +189,7 @@ RowLayout {
         maximumValue: 10
         decimals: 0
         stepSize: 1
-        suffix: qsTr(' colors')
+        suffix: qsTr(' colors', 'gradient control', value)
         onValueChanged: {
             _setStopCount(value)
         }

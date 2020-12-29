@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Meltytech, LLC
+ * Copyright (c) 2016-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,11 +43,13 @@ public:
     KeyframesModel& model() { return m_model; }
     Q_INVOKABLE int seekPrevious();
     Q_INVOKABLE int seekNext();
+    int currentParameter() const;
 
 signals:
     void changed(); /// Notifies when a filter parameter changes.
     void zoomIn();
     void zoomOut();
+    void zoomToFit();
     void resetZoom();
     void seekPreviousSimple();
     void seekNextSimple();
@@ -55,6 +57,7 @@ signals:
 public slots:
     void setCurrentFilter(QmlFilter* filter, QmlMetadata* meta);
     void load(bool force = false);
+    void onProducerModified();
 
 protected:
     bool event(QEvent *event);
@@ -70,8 +73,6 @@ private:
     QmlFilter m_emptyQmlFilter;
     KeyframesModel m_model;
     QmlProducer* m_qmlProducer;
-
-    int currentParameter() const;
 };
 
 #endif // KEYFRAMESDOCK_H

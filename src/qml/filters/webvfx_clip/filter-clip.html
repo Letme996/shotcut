@@ -27,8 +27,8 @@ function toHtmlColor(mltColor) {
 function Filter() {
     // Create a canvas
     this.canvas = document.createElement('canvas');
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    this.canvas.width = window.innerWidth / webvfx.getNumberParameter('mlt_profile_scale_width');
+    this.canvas.height = window.innerHeight / webvfx.getNumberParameter('mlt_profile_scale_height');
     document.body.appendChild(this.canvas);
     this.context = this.canvas.getContext('2d');
 
@@ -77,7 +77,7 @@ Filter.prototype.render = function(time) {
         document.body.style.backgroundColor = toHtmlColor(color);
     this.clipRoundedRect();
     webvfx.getImage("video").assignToHTMLImageElement(this.image);
-    this.context.drawImage(this.image, 0, 0);
+    this.context.drawImage(this.image, 0, 0, window.innerWidth, window.innerHeight);
 }
 
 function init() {

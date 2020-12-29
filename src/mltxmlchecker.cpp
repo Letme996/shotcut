@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,9 @@
 #include "mltcontroller.h"
 #include "shotcut_mlt_properties.h"
 #include "util.h"
+#include "proxymanager.h"
+#include "settings.h"
+
 #include <QLocale>
 #include <QDir>
 #include <QCoreApplication>
@@ -26,6 +29,7 @@
 #include <QRegExp>
 #include <Logger.h>
 #include <clocale>
+#include <utime.h>
 
 static QString getPrefix(const QString& name, const QString& value);
 
@@ -227,6 +231,7 @@ void MltXmlChecker::processProperties()
             m_resource.hash = p.second;
         } else if (isNumericProperty(p.first)) {
             checkNumericString(p.second);
+        } else if (p.first == "resource" && mlt_service == "webvfx" && fixWebVfxPath(p.second)) {
         } else if (readResourceProperty(p.first, p.second)) {
 #ifdef Q_OS_WIN
             fixVersion1701WindowsPathBug(p.second);
@@ -248,16 +253,19 @@ void MltXmlChecker::processProperties()
         checkUnlinkedFile(mlt_service);
         checkIncludesSelf(newProperties);
         checkLumaAlphaOver(mlt_service, newProperties);
+#if LIBMLT_VERSION_INT >= ((6<<16)+(23<<8))
+        replaceWebVfxCropFilters(mlt_service, newProperties);
+        replaceWebVfxChoppyFilter(mlt_service, newProperties);
+#endif
+        if (Settings.proxyEnabled())
+            checkForProxy(mlt_service, newProperties);
 
         // Second pass: amend property values.
         m_properties = newProperties;
         newProperties.clear();
         foreach (MltProperty p, m_properties) {
-            if (p.first == "resource" && mlt_service == "webvfx") {
-                fixWebVfxPath(p.second);
-
             // Fix some properties if re-linked file.
-            } else if (p.first == kShotcutHashProperty) {
+            if (p.first == kShotcutHashProperty) {
                 if (!m_resource.newHash.isEmpty())
                     p.second = m_resource.newHash;
             } else if (p.first == kShotcutCaptionProperty) {
@@ -267,7 +275,7 @@ void MltXmlChecker::processProperties()
                 // We no longer save this (leaks absolute paths).
                 p.second.clear();
             } else if (p.first == "audio_index" || p.first == "video_index") {
-                fixStreamIndex(p.second);
+                fixStreamIndex(p);
             }
 
             if (!p.second.isEmpty())
@@ -319,19 +327,26 @@ bool MltXmlChecker::fixWebVfxPath(QString& resource)
 {
     // The path, if absolute, should start with the Shotcut executable path.
     QFileInfo fi(resource);
-    if (fi.isAbsolute()) {
+    if (fi.isAbsolute() || Util::hasDriveLetter(resource)) {
         QDir appPath(QCoreApplication::applicationDirPath());
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#if defined(Q_OS_MAC)
+        // Leave the MacOS directory
+        appPath.cdUp();
+#elif defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
         // Leave the bin directory on Linux.
         appPath.cdUp();
 #endif
         if (!resource.startsWith(appPath.path())) {
             // Locate "share/shotcut" and replace the front of it with appPath.
             int i = resource.indexOf("/share/shotcut/");
+#if defined(Q_OS_MAC)
+            if (i == -1)
+                i = resource.indexOf("/Resources/shotcut/");
+#endif
             if (i >= 0) {
                 resource.replace(0, i, appPath.path());
-                m_isCorrected = true;
+                m_isUpdated = true;
                 return true;
             }
         }
@@ -371,13 +386,13 @@ bool MltXmlChecker::readResourceProperty(const QString& name, QString& value)
     if (mlt_class == "filter" || mlt_class == "transition" || mlt_class == "producer")
     if (name == "resource" || name == "src" || name == "filename"
             || name == "luma" || name == "luma.resource" || name == "composite.luma"
-            || name == "producer.resource" || name == "av.file") {
+            || name == "producer.resource" || name == "av.file" || name == "warp_resource") {
 
         // Handle special prefix such as "plain:" or speed.
         m_resource.prefix = getPrefix(name, value);
         // Save the resource name (minus prefix) for later check for unlinked files.
         m_resource.info.setFile(value.mid(m_resource.prefix.size()));
-        if (!isNetworkResource(value) && m_resource.info.isRelative())
+        if (!isNetworkResource(value) && m_resource.info.isRelative() && !Util::hasDriveLetter(value))
             m_resource.info.setFile(m_fileInfo.canonicalPath(), m_resource.info.filePath());
         return true;
     }
@@ -447,18 +462,28 @@ bool MltXmlChecker::fixUnlinkedFile(QString& value)
             // Restore special prefix such as "plain:" or speed value.
             value.prepend(m_resource.prefix);
             m_isCorrected = true;
+
+            Mlt::Producer producer(MLT.profile(), m_resource.info.filePath().toUtf8().constData());
+            if (producer.is_valid() && !::qstrcmp(producer.get("mlt_service"), "avformat")) {
+                m_resource.audio_index = producer.get_int("audio_index");
+                m_resource.video_index = producer.get_int("video_index");
+            }
             return true;
         }
     }
     return false;
 }
 
-void MltXmlChecker::fixStreamIndex(QString& value)
+void MltXmlChecker::fixStreamIndex(MltProperty& property)
 {
     // Remove a stream index property if re-linked file is different.
     if (!m_resource.hash.isEmpty() && !m_resource.newHash.isEmpty()
         && m_resource.hash != m_resource.newHash) {
-        value.clear();
+        if (property.first == "audio_index") {
+            property.second = QString::number(m_resource.audio_index);
+        } else if (property.first == "video_index") {
+            property.second = QString::number(m_resource.video_index);
+        }
     }
 }
 
@@ -498,6 +523,182 @@ void MltXmlChecker::checkLumaAlphaOver(const QString& mlt_service, QVector<MltXm
         }
         if (!found) {
             properties << MltProperty("alpha_over", "1");
+            m_isUpdated = true;
+        }
+    }
+}
+
+void MltXmlChecker::replaceWebVfxCropFilters(QString& mlt_service, QVector<MltXmlChecker::MltProperty>& properties)
+{
+    if (mlt_service == "webvfx") {
+        auto isCrop = false;
+        for (auto& p : properties) {
+            if (p.first == "shotcut:filter" && p.second == "webvfxCircularFrame") {
+                p.second = "cropCircle";
+                properties << MltProperty("circle", "1");
+                m_isUpdated = isCrop = true;
+                break;
+            }
+            if (p.first == "shotcut:filter" && p.second == "webvfxClip") {
+                p.second = "cropRectangle";
+                m_isUpdated = isCrop = true;
+                break;
+            }
+        }
+        if (isCrop) {
+            mlt_service = "qtcrop";
+            for (auto& p : properties) {
+                if (p.first == "resource") {
+                    properties.removeOne(p);
+                    break;
+                }
+            }
+            for (auto& p : properties) {
+                if (p.first == "mlt_service") {
+                    p.second = "qtcrop";
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void MltXmlChecker::replaceWebVfxChoppyFilter(QString& mlt_service, QVector<MltXmlChecker::MltProperty>& properties)
+{
+    if (mlt_service == "webvfx") {
+        auto isChoppy = false;
+        QString shotcutFilter;
+        for (auto& p : properties) {
+            if (p.first == "shotcut:filter") {
+                shotcutFilter = p.second;
+                if (p.second == "webvfxChoppy") {
+                    properties.removeOne(p);
+                    m_isUpdated = isChoppy = true;
+                    break;
+                }
+            }
+        }
+        if (isChoppy) {
+            mlt_service = "choppy";
+            for (auto& p : properties) {
+                if (p.first == "resource") {
+                    properties.removeOne(p);
+                    break;
+                }
+            }
+            for (auto& p : properties) {
+                if (p.first == "mlt_service") {
+                    p.second = "choppy";
+                    break;
+                }
+            }
+        } else if (shotcutFilter.isEmpty()) {
+            mlt_service = "qtext";
+            m_isUpdated = true;
+            for (auto& p : properties) {
+                if (p.first == "resource") {
+                    if (QFileInfo(p.second).isRelative()) {
+                        QDir projectDir(QFileInfo(m_tempFile->fileName()).dir());
+                        p.second = projectDir.filePath(p.second);
+                    }
+                    QFile file(p.second);
+                    if (file.open(QIODevice::ReadOnly)) {
+                        p.first = "html";
+                        p.second = QString::fromUtf8(file.readAll());
+                    }
+                    break;
+                }
+            }
+            for (auto& p : properties) {
+                if (p.first == "mlt_service") {
+                    p.second = "qtext";
+                    break;
+                }
+            }
+            properties << MltProperty("shotcut:filter", "richText");
+        }
+    }
+}
+
+void MltXmlChecker::checkForProxy(const QString& mlt_service, QVector<MltXmlChecker::MltProperty>& properties)
+{
+    bool isTimewarp = mlt_service == "timewarp";
+    if (mlt_service.startsWith("avformat") || isTimewarp) {
+        QString resource;
+        QString hash;
+        QString speed = "1";
+        for (auto& p : properties) {
+            if ((!isTimewarp && p.first == "resource") || p.first == "warp_resource") {
+                QFileInfo info(p.second);
+                if (info.isRelative())
+                    info.setFile(m_fileInfo.canonicalPath(), p.second);
+                resource = info.filePath();
+            } else if (p.first == kShotcutHashProperty) {
+                hash = p.second;
+            } else if (p.first == "warp_speed") {
+                speed = p.second;
+            } else if (p.first == kDisableProxyProperty && p.second == "1") {
+                return;
+            }
+        }
+        QDir proxyDir(Settings.proxyFolder());
+        QDir projectDir(QFileInfo(m_tempFile->fileName()).dir());
+        QString fileName = hash + ProxyManager::videoFilenameExtension();
+        projectDir.cd("proxies");
+        if (proxyDir.exists(fileName) || projectDir.exists(fileName)) {
+            ::utime(proxyDir.filePath(fileName).toUtf8().constData(), nullptr);
+            ::utime(projectDir.filePath(fileName).toUtf8().constData(), nullptr);
+            for (auto& p : properties) {
+                if (p.first == "resource") {
+                    if (projectDir.exists(fileName)) {
+                        p.second = projectDir.filePath(fileName);
+                    } else {
+                        p.second = proxyDir.filePath(fileName);
+                    }
+                    if (isTimewarp) {
+                        p.second = QString("%1:%2").arg(speed).arg(p.second);
+                    }
+                    break;
+                }
+            }
+            properties << MltProperty(kIsProxyProperty, "1");
+            properties << MltProperty(kOriginalResourceProperty, resource);
+            m_isUpdated = true;
+        }
+    } else if ((mlt_service == "qimage" || mlt_service == "pixbuf") && !properties.contains(MltProperty(kShotcutSequenceProperty, "1"))) {
+        QString resource;
+        QString hash;
+        for (auto& p : properties) {
+            if (p.first == "resource") {
+                QFileInfo info(p.second);
+                if (info.isRelative())
+                    info.setFile(m_fileInfo.canonicalPath(), p.second);
+                resource = info.filePath();
+            } else if (p.first == kShotcutHashProperty) {
+                hash = p.second;
+            } else if (p.first == kDisableProxyProperty && p.second == "1") {
+                return;
+            }
+        }
+        QDir proxyDir(Settings.proxyFolder());
+        QDir projectDir(QFileInfo(m_tempFile->fileName()).dir());
+        QString fileName = hash + ProxyManager::imageFilenameExtension();
+        projectDir.cd("proxies");
+        if (proxyDir.exists(fileName) || projectDir.exists(fileName)) {
+            ::utime(proxyDir.filePath(fileName).toUtf8().constData(), nullptr);
+            ::utime(projectDir.filePath(fileName).toUtf8().constData(), nullptr);
+            for (auto& p : properties) {
+                if (p.first == "resource") {
+                    if (projectDir.exists(fileName)) {
+                        p.second = projectDir.filePath(fileName);
+                    } else {
+                        p.second = proxyDir.filePath(fileName);
+                    }
+                    break;
+                }
+            }
+            properties << MltProperty(kIsProxyProperty, "1");
+            properties << MltProperty(kOriginalResourceProperty, resource);
             m_isUpdated = true;
         }
     }

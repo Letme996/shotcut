@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,14 +69,14 @@ RowLayout {
             myColor.a = currentColor.a
             // If the user changed color but left alpha at 0,
             // they probably want to reset alpha to opaque.
-            console.log('currentColor.a=' + currentColor.a + ' currentColor=' + currentColor + ' myColor=' + myColor)
-            if (currentColor.a === 0 && !Qt.colorEqual(currentColor, myColor))
-                currentColor.a = 255
+            if (currentColor.a === 0 && (!Qt.colorEqual(currentColor, myColor) ||
+                                         (Qt.colorEqual(currentColor, 'transparent') && Qt.colorEqual(value, 'transparent'))))
+                currentColor.a = 1.0
             // Assign the new color value. Unlike docs say, using currentColor
             // is actually more cross-platform compatible.
             value = currentColor
         }
-        modality: Qt.ApplicationModal
+        modality: application.dialogModality
     }
     
     Button {

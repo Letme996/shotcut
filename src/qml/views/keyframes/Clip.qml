@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2016-2018 Meltytech, LLC
- * Author: Dan Dennedy <dan@dennedy.org>
+ * Copyright (c) 2016-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +17,7 @@
 
 import QtQuick 2.2
 import QtQuick.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import Shotcut.Controls 1.0
 import QtGraphicalEffects 1.0
 import QtQml.Models 2.2
@@ -92,7 +92,8 @@ Rectangle {
 
     Image {
         id: outThumbnail
-        visible: settings.timelineShowThumbnails && outThumbnailVisible
+        visible: settings.timelineShowThumbnails && outThumbnailVisible && metadata !== null &&
+                 parent.height > 20 && x > inThumbnail.width
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.topMargin: parent.border.width
@@ -106,7 +107,7 @@ Rectangle {
 
     Image {
         id: inThumbnail
-        visible: settings.timelineShowThumbnails && inThumbnailVisible && metadata !== null
+        visible: settings.timelineShowThumbnails && inThumbnailVisible && metadata !== null && parent.height > 20
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.topMargin: parent.border.width
@@ -120,16 +121,17 @@ Rectangle {
     Row {
         id: waveform
         visible: settings.timelineShowWaveforms
-        height: isAudio? parent.height : parent.height / 2
+        height: (isAudio || parent.height <= 20)? parent.height : parent.height / 2
         anchors.left: parent.left
         anchors.bottom: parent.bottom
         anchors.margins: parent.border.width
         opacity: 0.7
-        property int maxWidth: 10000
+        property int maxWidth: Math.max(application.maxTextureSize / 2, 2048)
         property int innerWidth: clipRoot.width - clipRoot.border.width * 2
 
         Repeater {
             id: waveformRepeater
+            model: Math.ceil(waveform.innerWidth / waveform.maxWidth)
             TimelineWaveform {
                 width: Math.min(waveform.innerWidth, waveform.maxWidth)
                 height: waveform.height
@@ -138,6 +140,10 @@ Rectangle {
                 inPoint: Math.round((clipRoot.inPoint + index * waveform.maxWidth / timeScale) * speed) * channels
                 outPoint: inPoint + Math.round(width / timeScale * speed) * channels
                 levels: audioLevels
+                active: ((clipRoot.x + x + width)   > scrollView.flickableItem.contentX) && // right edge
+                        ((clipRoot.x + x)           < scrollView.flickableItem.contentX + scrollView.width) && // left edge
+                        ((trackRoot.y + y + height) > scrollView.flickableItem.contentY) && // bottom edge
+                        ((trackRoot.y + y)          < scrollView.flickableItem.contentY + scrollView.height) // top edge
             }
         }
     }
@@ -227,7 +233,6 @@ Rectangle {
             (animateInMouseArea.drag.active || animateOutMouseArea.drag.active)? Qt.PointingHandCursor :
             Qt.ArrowCursor
         onClicked: menu.popup()
-        onWheel: zoomByWheel(wheel)
     }
 
     TimelineTriangle {
@@ -484,19 +489,12 @@ Rectangle {
             }
         }
     }
-    Menu {
+    Controls2.Menu {
         id: menu
-        MenuItem {
+        Controls2.MenuItem {
             visible: !isBlank && settings.timelineShowWaveforms
             text: qsTr('Rebuild Audio Waveform')
             onTriggered: producer.remakeAudioLevels()
-        }
-        onPopupVisibleChanged: {
-            if (visible && application.OS !== 'OS X' && __popupGeometry.height > 0) {
-                // Try to fix menu running off screen. This only works intermittently.
-                menu.__yOffset = Math.min(0, Screen.height - (__popupGeometry.y + __popupGeometry.height + 40))
-                menu.__xOffset = Math.min(0, Screen.width - (__popupGeometry.x + __popupGeometry.width))
-            }
         }
     }
 }

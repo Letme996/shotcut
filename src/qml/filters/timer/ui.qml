@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Meltytech, LLC
+ * Copyright (c) 2018-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 
 import QtQuick 2.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import Shotcut.Controls 1.0
@@ -79,7 +80,7 @@ Item {
         var formatIndex = 0;
         var format = filter.get('format')
         for (var i = 0; i < formatCombo.model.count; i++) {
-            if (formatCombo.model.get(i).format == format) {
+            if (formatCombo.model.get(i).format === format) {
                 formatIndex = i
                 break
             }
@@ -88,8 +89,8 @@ Item {
 
         var directionIndex = 0;
         var direction = filter.get('direction')
-        for (var i = 0; i < directionCombo.model.count; i++) {
-            if (directionCombo.model.get(i).direction == direction) {
+        for (i = 0; i < directionCombo.model.count; i++) {
+            if (directionCombo.model.get(i).direction === direction) {
                 directionIndex = i
                 break
             }
@@ -135,18 +136,21 @@ Item {
             text: qsTr('Format')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: formatCombo
             model: ListModel {
                 ListElement { text: QT_TR_NOOP('HH:MM:SS'); format: "HH:MM:SS" }
                 ListElement { text: QT_TR_NOOP('HH:MM:SS.S'); format: "HH:MM:SS.S" }
                 ListElement { text: QT_TR_NOOP('MM:SS'); format: "MM:SS" }
                 ListElement { text: QT_TR_NOOP('MM:SS.SS'); format: "MM:SS.SS" }
+                ListElement { text: QT_TR_NOOP('MM:SS.SSS'); format: "MM:SS.SSS" }
                 ListElement { text: QT_TR_NOOP('SS'); format: "SS" }
                 ListElement { text: QT_TR_NOOP('SS.S'); format: "SS.S" }
                 ListElement { text: QT_TR_NOOP('SS.SS'); format: "SS.SS" }
+                ListElement { text: QT_TR_NOOP('SS.SSS'); format: "SS.SSS" }
             }
-            onCurrentIndexChanged: {
+            textRole: 'text'
+            onActivated: {
                 filter.set('format', model.get(currentIndex).format)
             }
         }
@@ -155,13 +159,14 @@ Item {
             text: qsTr('Direction')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: directionCombo
             model: ListModel {
                 ListElement { text: QT_TR_NOOP('Up'); direction: "up" }
                 ListElement { text: QT_TR_NOOP('Down'); direction: "down" }
             }
-            onCurrentIndexChanged: {
+            textRole: 'text'
+            onActivated: {
                 filter.set('direction', model.get(currentIndex).direction)
             }
         }

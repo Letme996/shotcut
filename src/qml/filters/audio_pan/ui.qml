@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.1
 import QtQuick.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 import Shotcut.Controls 1.0
 
@@ -32,6 +33,7 @@ Item {
         if (filter.isNew) {
             // Set default parameter values
             combo.currentIndex = 0
+            filter.set('channel', 0)
             filter.set('start', 0)
             filter.set('split', 0)
             filter.savePreset(preset.parameters)
@@ -126,11 +128,11 @@ Item {
             text: qsTr('Channel')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: combo
             Layout.columnSpan: 3
             model: [qsTr('Left'), qsTr('Right')]
-            onCurrentIndexChanged: filter.set('channel', currentIndex)
+            onActivated: filter.set('channel', currentIndex)
         }
 
         Label {

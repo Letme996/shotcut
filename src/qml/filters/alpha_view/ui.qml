@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Meltytech, LLC
- * Author: Dan Dennedy <dan@dennedy.org>
+ * Copyright (c) 2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +16,8 @@
  */
 
 import QtQuick 2.5
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
 import QtQml.Models 2.2
 
 Item {
@@ -28,6 +26,7 @@ Item {
     property string paramDisplay: '0'
     property string paramUseInput: '1'
     Component.onCompleted: {
+        filter.set('threads', 0)
         if (filter.isNew) {
             filter.set(paramUseInput, 1)
             filter.set(paramDisplay, 0.21)
@@ -58,7 +57,8 @@ Item {
                     ListElement { text: qsTr('Gray Background'); value: 0.64 }
                     ListElement { text: qsTr('White Background'); value: 0.79 }
                 }
-                onCurrentIndexChanged: {
+                textRole: 'text'
+                onActivated: {
                     filter.set(paramDisplay, displayModel.get(currentIndex).value)
                 }
             }

@@ -16,7 +16,11 @@ Metadata {
             Parameter {
                 name: qsTr('Level')
                 property: 'alpha'
+                gangedProperties: ['opacity']
                 isSimple: true
+                isCurve: true
+                minimum: 0
+                maximum: 1
             }
         ]
     }

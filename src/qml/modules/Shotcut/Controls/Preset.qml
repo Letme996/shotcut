@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.1
 import QtQuick.Controls 1.0
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 import QtQuick.Window 2.1
 
@@ -31,7 +32,7 @@ RowLayout {
         filter.loadPresets()
     }
 
-    ComboBox {
+    Controls2.ComboBox {
         id: presetCombo
         Layout.fillWidth: true
         Layout.minimumWidth: 100
@@ -80,7 +81,7 @@ RowLayout {
         id: nameDialog
         flags: Qt.Dialog
         color: dialogPalette.window
-        modality: Qt.ApplicationModal
+        modality: application.dialogModality
         title: qsTr('Save Preset')
         width: 200
         height: 90
@@ -106,7 +107,7 @@ RowLayout {
                 Layout.fillWidth: true
                 onAccepted: nameDialog.acceptName()
                 Keys.onPressed: {
-                    if (event.key == Qt.Key_Escape) {
+                    if (event.key === Qt.Key_Escape) {
                         nameDialog.close()
                         event.accepted = true
                     }
@@ -136,7 +137,7 @@ RowLayout {
         id: confirmDialog
         flags: Qt.Dialog
         color: dialogPalette.window
-        modality: Qt.ApplicationModal
+        modality: application.dialogModality
         title: qsTr('Delete Preset')
         width: 300
         height: 90

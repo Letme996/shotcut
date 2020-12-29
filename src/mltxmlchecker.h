@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,10 +69,13 @@ private:
     void checkCpuEffects(const QString& mlt_service);
     void checkUnlinkedFile(const QString& mlt_service);
     bool fixUnlinkedFile(QString& value);
-    void fixStreamIndex(QString& value);
+    void fixStreamIndex(MltProperty& property);
     bool fixVersion1701WindowsPathBug(QString& value);
     void checkIncludesSelf(QVector<MltProperty>& properties);
     void checkLumaAlphaOver(const QString& mlt_service, QVector<MltProperty>& properties);
+    void replaceWebVfxCropFilters(QString& mlt_service, QVector<MltProperty>& properties);
+    void replaceWebVfxChoppyFilter(QString& mlt_service, QVector<MltProperty>& properties);
+    void checkForProxy(const QString& mlt_service, QVector<MltProperty>& properties);
 
     QXmlStreamReader m_xml;
     QXmlStreamWriter m_newXml;
@@ -95,6 +98,7 @@ private:
         QString newHash;
         QString newDetail;
         QString prefix;
+        int audio_index, video_index;
 
         void clear() {
             info.setFile(QString());
@@ -102,6 +106,7 @@ private:
             newHash.clear();
             newDetail.clear();
             prefix.clear();
+            audio_index = video_index = -1;
         }
     } m_resource;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ QmlMetadata::QmlMetadata(QObject *parent)
     , m_allowMultiple(true)
     , m_isClipOnly(false)
     , m_isGpuCompatible(true)
+    , m_isDeprecated(false)
 {
 }
 
@@ -154,6 +155,16 @@ void QmlMetadata::setIsClipOnly(bool isClipOnly)
     m_isClipOnly = isClipOnly;
 }
 
+bool QmlMetadata::isMltVersion(const QString &version)
+{
+    if (!m_minimumVersion.isEmpty()) {
+        LOG_DEBUG() << "MLT version:" << version << "Shotcut minimumVersion:" << m_minimumVersion;
+        if (QVersionNumber::fromString(version) < QVersionNumber::fromString(m_minimumVersion))
+            return false;
+    }
+    return true;
+}
+
 QmlKeyframesMetadata::QmlKeyframesMetadata(QObject* parent)
     : QObject(parent)
     , m_allowTrim(true)
@@ -183,5 +194,6 @@ QmlKeyframesParameter::QmlKeyframesParameter(QObject* parent)
     , m_isCurve(false)
     , m_minimum(0.0)
     , m_maximum(0.0)
+    , m_isRectangle(false)
 {
 }

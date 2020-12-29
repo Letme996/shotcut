@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ enum {
 class AppendCommand : public QUndoCommand
 {
 public:
-    AppendCommand(MultitrackModel& model, int trackIndex, const QString& xml, QUndoCommand * parent = 0);
+    AppendCommand(MultitrackModel& model, int trackIndex, const QString& xml, bool skipProxy = false, QUndoCommand * parent = 0);
     void redo();
     void undo();
 private:
@@ -53,6 +53,7 @@ private:
     int m_trackIndex;
     QString m_xml;
     UndoHelper m_undoHelper;
+    bool m_skipProxy;
 };
 
 class InsertCommand : public QUndoCommand
@@ -310,12 +311,12 @@ private:
 class AddTransitionCommand : public QUndoCommand
 {
 public:
-    AddTransitionCommand(MultitrackModel& model, int trackIndex, int clipIndex, int position, bool ripple, QUndoCommand * parent = 0);
+    AddTransitionCommand(TimelineDock& timeline, int trackIndex, int clipIndex, int position, bool ripple, QUndoCommand * parent = 0);
     void redo();
     void undo();
     int getTransitionIndex() const { return m_transitionIndex; }
 private:
-    MultitrackModel& m_model;
+    TimelineDock& m_timeline;
     int m_trackIndex;
     int m_clipIndex;
     int m_position;
@@ -520,6 +521,21 @@ private:
     QString m_xml;
     UndoHelper m_undoHelper;
     bool m_trackAdded;
+};
+
+class ReplaceCommand : public QUndoCommand
+{
+public:
+    ReplaceCommand(MultitrackModel& model, int trackIndex, int clipIndex, const QString& xml, QUndoCommand* parent = nullptr);
+    void redo();
+    void undo();
+private:
+    MultitrackModel& m_model;
+    int m_trackIndex;
+    int m_clipIndex;
+    QString m_xml;
+    bool m_isFirstRedo;
+    UndoHelper m_undoHelper;
 };
 
 } // namespace Timeline

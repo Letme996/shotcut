@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 Meltytech, LLC
+ * Copyright (c) 2017-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.0
 import Shotcut.Controls 1.0
 
@@ -177,30 +178,36 @@ Item {
             text: qsTr('Operation')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: operationCombo
             implicitWidth: 180
-            model: [qsTr('Write on Clear'), qsTr('Maximum'), qsTr('Minimum'), qsTr('Add'), qsTr('Subtract')]
-            onCurrentIndexChanged: filter.set(paramOperation, currentIndex / 4)
+            model: [qsTr('Overwrite'), qsTr('Maximum'), qsTr('Minimum'), qsTr('Add'), qsTr('Subtract')]
+            onActivated: filter.set(paramOperation, currentIndex / 4)
         }
         UndoButton {
             Layout.columnSpan: 2
-            onClicked: operationCombo.currentIndex = 0
+            onClicked: {
+                filter.set(paramOperation, 0)
+                operationCombo.currentIndex = 0
+            }
         }
 
         Label {
             text: qsTr('Shape')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: shapeCombo
             implicitWidth: 180
             model: [qsTr('Rectangle'), qsTr('Ellipse'), qsTr('Triangle'), qsTr('Diamond')]
-            onCurrentIndexChanged: filter.set(paramShape, currentIndex / 3)
+            onActivated: filter.set(paramShape, currentIndex / 3)
         }
         UndoButton {
             Layout.columnSpan: 2
-            onClicked: shapeCombo.currentIndex = 0
+            onClicked:  {
+                filter.set(paramShape, 0)
+                shapeCombo.currentIndex = 0
+            }
         }
 
         Label {

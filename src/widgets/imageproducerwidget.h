@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019 Meltytech, LLC
+ * Copyright (c) 2012-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ signals:
 
 public slots:
     void updateDuration();
+    void rename();
 
 private slots:
     void on_resetButton_clicked();
@@ -70,6 +71,18 @@ private slots:
     void on_actionOpenFolder_triggered();
 
     void on_actionSetFileDate_triggered();
+
+    void on_filenameLabel_editingFinished();
+    
+    void on_actionDisableProxy_triggered(bool checked);
+
+    void on_actionMakeProxy_triggered();
+
+    void on_actionDeleteProxy_triggered();
+
+    void on_actionCopyHashCode_triggered();
+
+    void on_proxyButton_clicked();
 
 private:
     Ui::ImageProducerWidget *ui;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019 Meltytech, LLC
+ * Copyright (c) 2012-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <QAction>
 #include <QDialog>
 #include <QDir>
+#include <QTimer>
 #include <Logger.h>
 #include "mainwindow.h"
 #include "dialogs/textviewerdialog.h"
@@ -84,12 +85,17 @@ MeltJob::~MeltJob()
 
 void MeltJob::start()
 {
+    if (m_args.isEmpty() && !m_xml) {
+        AbstractJob::start();
+        LOG_ERROR() << "the job XML is empty!";
+        appendToLog("Error: the job XML is empty!\n");
+        QTimer::singleShot(0, [=]() {
+            emit finished(this, false);
+        });
+        return;
+    }
     QString shotcutPath = qApp->applicationDirPath();
-#ifdef Q_OS_WIN
-    QFileInfo meltPath(shotcutPath, "qmelt.exe");
-#else
-    QFileInfo meltPath(shotcutPath, "qmelt");
-#endif
+    QFileInfo meltPath(shotcutPath, "melt");
     setReadChannel(QProcess::StandardError);
     QStringList args;
     args << "-verbose";
@@ -98,16 +104,26 @@ void MeltJob::start()
     if (m_args.size() > 0) {
         args.append(m_args);
     } else if (m_useMultiConsumer) {
-        args << xmlPath() + "?multi:1";
+        args << QUrl::toPercentEncoding(xmlPath()) + "?multi:1";
     } else {
-        args << xmlPath();
+        args << QUrl::toPercentEncoding(xmlPath());
     }
     LOG_DEBUG() << meltPath.absoluteFilePath() << args;
+#ifndef Q_OS_MAC
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    // These environment variables fix rich text rendering for high DPI
+    // fractional or otherwise.
+    env.insert("QT_AUTO_SCREEN_SCALE_FACTOR", "1");
+    env.insert("QT_SCALE_FACTOR_ROUNDING_POLICY", "PassThrough");
+    setProcessEnvironment(env);
+#endif
 #ifdef Q_OS_WIN
     if (m_isStreaming) args << "-getc";
     QProcess::start(meltPath.absoluteFilePath(), args);
 #else
     args.prepend(meltPath.absoluteFilePath());
+    args.prepend("3");
+    args.prepend("-n");
     QProcess::start("nice", args);
 #endif
     AbstractJob::start();

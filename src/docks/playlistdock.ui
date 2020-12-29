@@ -238,8 +238,8 @@ p, li { white-space: pre-wrap; }
          <string/>
         </property>
         <property name="icon">
-         <iconset theme="format-justify-fill" resource="../../icons/resources.qrc">
-          <normaloff>:/icons/oxygen/32x32/actions/format-justify-fill.png</normaloff>:/icons/oxygen/32x32/actions/format-justify-fill.png</iconset>
+         <iconset theme="show-menu" resource="../../icons/resources.qrc">
+          <normaloff>:/icons/oxygen/32x32/actions/format-justify-fill.png</normaloff>:/icons/oxygen/32x32/actions/show-menu.png</iconset>
         </property>
        </widget>
       </item>
@@ -396,6 +396,11 @@ p, li { white-space: pre-wrap; }
   <action name="actionAddToTimeline">
    <property name="text">
     <string>Add Selected to Timeline</string>
+   </property>
+  </action>
+  <action name="actionAddToSlideshow">
+   <property name="text">
+    <string>Add Selected to Slideshow</string>
    </property>
   </action>
   <action name="actionSortByName">

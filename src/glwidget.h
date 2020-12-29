@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2019 Meltytech, LLC
+ * Copyright (c) 2011-2020 Meltytech, LLC
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include <QOffscreenSurface>
 #include <QMutex>
 #include <QThread>
-#include <QRect>
+#include <QRectF>
 #include <QTimer>
 #include "mltcontroller.h"
 #include "sharedframe.h"
@@ -48,7 +48,7 @@ typedef void* ( *thread_function_t )( void* );
 class GLWidget : public QQuickWidget, public Controller, protected QOpenGLFunctions
 {
     Q_OBJECT
-    Q_PROPERTY(QRect rect READ rect NOTIFY rectChanged)
+    Q_PROPERTY(QRectF rect READ rect NOTIFY rectChanged)
     Q_PROPERTY(int grid READ grid NOTIFY gridChanged)
     Q_PROPERTY(bool snapToGrid READ snapToGrid NOTIFY snapToGridChanged)
     Q_PROPERTY(float zoom READ zoom NOTIFY zoomChanged)
@@ -83,13 +83,14 @@ public:
 
     QObject* videoWidget() { return this; }
     Filter* glslManager() const { return m_glslManager; }
-    QRect rect() const { return m_rect; }
+    QRectF rect() const { return m_rect; }
     int grid() const { return m_grid; }
     float zoom() const { return m_zoom * MLT.profile().width() / m_rect.width(); }
     QPoint offset() const;
     QImage image() const;
     void requestImage() const;
     bool snapToGrid() const { return m_snapToGrid; }
+    int maxTextureSize() const { return m_maxTextureSize; }
 
 public slots:
     void onFrameDisplayed(const SharedFrame& frame);
@@ -118,7 +119,7 @@ signals:
     void toggleZoom(bool);
 
 private:
-    QRect m_rect;
+    QRectF m_rect;
     int m_grid;
     GLuint m_texture[3];
     QOpenGLShaderProgram* m_shader;
@@ -147,6 +148,7 @@ private:
     bool m_snapToGrid;
     QTimer m_refreshTimer;
     bool m_scrubAudio;
+    GLint m_maxTextureSize;
 
     static void on_frame_show(mlt_consumer, void* self, mlt_frame frame);
 

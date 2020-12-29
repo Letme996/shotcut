@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "shotcut_mlt_properties.h"
 #include "settings.h"
 #include "util.h"
+#include "proxymanager.h"
 #include <Logger.h>
 
 #include <QDir>
@@ -64,11 +65,10 @@ QmlFilter::~QmlFilter()
 QString QmlFilter::get(QString name, int position)
 {
     if (m_filter.is_valid()) {
-        const char* propertyName = name.toUtf8().constData();
         if (position < 0)
-            return QString::fromUtf8(m_filter.get(propertyName));
+            return QString::fromUtf8(m_filter.get(qUtf8Printable(name)));
         else
-            return QString::fromUtf8(m_filter.anim_get(propertyName, position, duration()));
+            return QString::fromUtf8(m_filter.anim_get(qUtf8Printable(name), position, duration()));
     } else {
         return QString();
     }
@@ -77,11 +77,10 @@ QString QmlFilter::get(QString name, int position)
 double QmlFilter::getDouble(QString name, int position)
 {
     if (m_filter.is_valid()) {
-        const char* propertyName = name.toUtf8().constData();
         if (position < 0)
-            return m_filter.get_double(propertyName);
+            return m_filter.get_double(qUtf8Printable(name));
         else
-            return m_filter.anim_get_double(propertyName, position, duration());
+            return m_filter.anim_get_double(qUtf8Printable(name), position, duration());
     } else {
         return 0.0;
     }
@@ -90,14 +89,13 @@ double QmlFilter::getDouble(QString name, int position)
 QRectF QmlFilter::getRect(QString name, int position)
 {
     if (!m_filter.is_valid()) return QRectF();
-    const char* s = m_filter.get(name.toUtf8().constData());
+    const char* s = m_filter.get(qUtf8Printable(name));
     if (s) {
-        const char* propertyName = name.toUtf8().constData();
         mlt_rect rect;
         if (position < 0) {
-            rect = m_filter.get_rect(propertyName);
+            rect = m_filter.get_rect(qUtf8Printable(name));
         } else {
-            rect = m_filter.anim_get_rect(propertyName, position, duration());
+            rect = m_filter.anim_get_rect(qUtf8Printable(name), position, duration());
         }
         if (::strchr(s, '%')) {
             return QRectF(qRound(rect.x * MLT.profile().width()),
@@ -117,7 +115,7 @@ QStringList QmlFilter::getGradient(QString name)
     QStringList list;
     for (int i = 1; i <= 10; i++) {
         QString colorName = name + "." + QString::number(i);
-        const char* value = m_filter.get(colorName.toUtf8().constData());
+        const char* value = m_filter.get(qUtf8Printable(colorName));
         if (value) {
             list.append(QString::fromUtf8(value));
         } else {
@@ -131,16 +129,16 @@ void QmlFilter::set(QString name, QString value, int position)
 {
     if (!m_filter.is_valid()) return;
     if (position < 0) {
-        if (qstrcmp(m_filter.get(name.toUtf8().constData()), value.toUtf8().constData())) {
-            m_filter.set(name.toUtf8().constData(), value.toUtf8().constData());
+        if (qstrcmp(m_filter.get(qUtf8Printable(name)), qUtf8Printable(value)))  {
+            m_filter.set_string(qUtf8Printable(name), qUtf8Printable(value)) ;
             emit changed(name);
         }
     } else {
         // Only set an animation keyframe if it does not already exist with the same value.
-        Mlt::Animation animation(m_filter.get_animation(name.toUtf8().constData()));
+        Mlt::Animation animation(m_filter.get_animation(qUtf8Printable(name)));
         if (!animation.is_valid() || !animation.is_key(position)
-                || value != m_filter.anim_get(name.toUtf8().constData(), position, duration())) {
-            m_filter.anim_set(name.toUtf8().constData(), value.toUtf8().constData(), position, duration());
+                || value != m_filter.anim_get(qUtf8Printable(name), position, duration())) {
+            m_filter.anim_set(qUtf8Printable(name), qUtf8Printable(value), position, duration());
             emit changed(name);
         }
     }
@@ -150,10 +148,10 @@ void QmlFilter::set(QString name, double value, int position, mlt_keyframe_type 
 {
     if (!m_filter.is_valid()) return;
     if (position < 0) {
-        if (!m_filter.get(name.toUtf8().constData())
-            || m_filter.get_double(name.toUtf8().constData()) != value) {
-            double delta = value - m_filter.get_double(name.toUtf8().constData());
-            m_filter.set(name.toUtf8().constData(), value);
+        if (!m_filter.get(qUtf8Printable(name))
+            || m_filter.get_double(qUtf8Printable(name)) != value) {
+            double delta = value - m_filter.get_double(qUtf8Printable(name));
+            m_filter.set(qUtf8Printable(name), value);
             emit changed(name);
             if (name == "in") {
                 emit inChanged(delta);
@@ -163,11 +161,11 @@ void QmlFilter::set(QString name, double value, int position, mlt_keyframe_type 
         }
     } else {
         // Only set an animation keyframe if it does not already exist with the same value.
-        Mlt::Animation animation(m_filter.get_animation(name.toUtf8().constData()));
+        Mlt::Animation animation(m_filter.get_animation(qUtf8Printable(name)));
         if (!animation.is_valid() || !animation.is_key(position)
-                || value != m_filter.anim_get_double(name.toUtf8().constData(), position, duration())) {
+                || value != m_filter.anim_get_double(qUtf8Printable(name), position, duration())) {
             mlt_keyframe_type type = getKeyframeType(animation, position, keyframeType);
-            m_filter.anim_set(name.toUtf8().constData(), value, position, duration(), type);
+            m_filter.anim_set(qUtf8Printable(name), value, position, duration(), type);
             emit changed(name);
         }
     }
@@ -177,10 +175,10 @@ void QmlFilter::set(QString name, int value, int position, mlt_keyframe_type key
 {
     if (!m_filter.is_valid()) return;
     if (position < 0) {
-        if (!m_filter.get(name.toUtf8().constData())
-            || m_filter.get_int(name.toUtf8().constData()) != value) {
-            int delta = value - m_filter.get_int(name.toUtf8().constData());
-            m_filter.set(name.toUtf8().constData(), value);
+        if (!m_filter.get(qUtf8Printable(name))
+            || m_filter.get_int(qUtf8Printable(name)) != value) {
+            int delta = value - m_filter.get_int(qUtf8Printable(name));
+            m_filter.set(qUtf8Printable(name), value);
             emit changed(name);
             if (name == "in") {
                 emit inChanged(delta);
@@ -190,11 +188,11 @@ void QmlFilter::set(QString name, int value, int position, mlt_keyframe_type key
         }
     } else {
         // Only set an animation keyframe if it does not already exist with the same value.
-        Mlt::Animation animation(m_filter.get_animation(name.toUtf8().constData()));
+        Mlt::Animation animation(m_filter.get_animation(qUtf8Printable(name)));
         if (!animation.is_valid() || !animation.is_key(position)
-                || value != m_filter.anim_get_int(name.toUtf8().constData(), position, duration())) {
+                || value != m_filter.anim_get_int(qUtf8Printable(name), position, duration())) {
             mlt_keyframe_type type = getKeyframeType(animation, position, keyframeType);
-            m_filter.anim_set(name.toUtf8().constData(), value, position, duration(), type);
+            m_filter.anim_set(qUtf8Printable(name), value, position, duration(), type);
             emit changed(name);
         }
     }
@@ -210,16 +208,16 @@ void QmlFilter::set(QString name, double x, double y, double width, double heigh
 {
     if (!m_filter.is_valid()) return;
     if (position < 0) {
-        mlt_rect rect = m_filter.get_rect(name.toUtf8().constData());
-        if (!m_filter.get(name.toUtf8().constData()) || x != rect.x || y != rect.y
+        mlt_rect rect = m_filter.get_rect(qUtf8Printable(name));
+        if (!m_filter.get(qUtf8Printable(name)) || x != rect.x || y != rect.y
             || width != rect.w || height != rect.h || opacity != rect.o) {
-            m_filter.set(name.toUtf8().constData(), x, y, width, height, opacity);
+            m_filter.set(qUtf8Printable(name), x, y, width, height, opacity);
             emit changed(name);
         }
     } else {
-        mlt_rect rect = m_filter.anim_get_rect(name.toUtf8().constData(), position, duration());
+        mlt_rect rect = m_filter.anim_get_rect(qUtf8Printable(name), position, duration());
         // Only set an animation keyframe if it does not already exist with the same value.
-        Mlt::Animation animation(m_filter.get_animation(name.toUtf8().constData()));
+        Mlt::Animation animation(m_filter.get_animation(qUtf8Printable(name)));
         if (!animation.is_valid() || !animation.is_key(position)
                 || x != rect.x || y != rect.y || width != rect.w || height != rect.h || opacity != rect.o) {
             rect.x = x;
@@ -228,7 +226,7 @@ void QmlFilter::set(QString name, double x, double y, double width, double heigh
             rect.h = height;
             rect.o = opacity;
             mlt_keyframe_type type = getKeyframeType(animation, position, keyframeType);
-            m_filter.anim_set(name.toUtf8().constData(), rect, position, duration(), type);
+            m_filter.anim_set(qUtf8Printable(name), rect, position, duration(), type);
             emit changed(name);
         }
     }
@@ -239,9 +237,9 @@ void QmlFilter::setGradient(QString name, const QStringList& gradient)
     for (int i = 1; i <= 10;  i++) {
         QString colorName = name + "." + QString::number(i);
         if (i <= gradient.length()) {
-            m_filter.set(colorName.toUtf8().constData(), gradient[i-1].toUtf8().constData());
+            m_filter.set(qUtf8Printable(colorName), qUtf8Printable(gradient[i-1]));
         } else {
-            m_filter.clear(colorName.toUtf8().constData());
+            m_filter.clear(qUtf8Printable(colorName));
         }
     }
     emit changed();
@@ -292,7 +290,6 @@ int QmlFilter::savePreset(const QStringList &propertyNames, const QString &name)
             dir.cd(objectNameOrService());
     }
     QString preset = name.isEmpty()? tr("(defaults)") : QString::fromUtf8(QUrl::toPercentEncoding(name));
-#if LIBMLT_VERSION_INT >= ((6<<16)+(9<<8))
     // Convert properties to YAML string.
     char* yamlStr = properties.serialise_yaml();
     QString yaml = yamlStr;
@@ -304,9 +301,6 @@ int QmlFilter::savePreset(const QStringList &propertyNames, const QString &name)
     }
     yamlFile.write(yaml.toUtf8());
     yamlFile.close();
-#else
-    properties.save(dir.filePath(preset).toUtf8().constData());
-#endif
     loadPresets();
     return m_presets.indexOf(name);
 }
@@ -326,16 +320,34 @@ void QmlFilter::analyze(bool isAudio)
 {
     Mlt::Service service(mlt_service(m_filter.get_data("service")));
 
-    // get temp filename for input xml
+    // get temp file for input xml
     QString filename(m_filter.get("filename"));
     QScopedPointer<QTemporaryFile> tmp(Util::writableTemporaryFile(filename));
     tmp->open();
-    tmp->close();
+
     m_filter.set("results", nullptr, 0);
     int disable = m_filter.get_int("disable");
     m_filter.set("disable", 0);
     if (!isAudio) m_filter.set("analyze", 1);
-    MLT.saveXML(tmp->fileName(), &service, false, false);
+
+    // Fix in/out points of filters on clip-only project.
+    if (MLT.isSeekableClip()) {
+        Mlt::Producer producer(MLT.profile(), "xml-string", MLT.XML().toUtf8().constData());
+        service = Mlt::Service(producer);
+        int producerIn = producer.get_in();
+        if (producerIn > 0) {
+            int n = producer.filter_count();
+            for (int i = 0; i < n; i++) {
+                Mlt::Filter filter(*producer.filter(i));
+                if (filter.get_in() > 0)
+                    filter.set_in_and_out(filter.get_in() - producerIn, filter.get_out() - producerIn);
+            }
+        }
+    }
+
+    MLT.saveXML(tmp->fileName(), &service, false /* without relative paths */, tmp.data());
+    tmp->close();
+
     if (!isAudio) m_filter.set("analyze", 0);
     m_filter.set("disable", disable);
 
@@ -373,8 +385,7 @@ void QmlFilter::analyze(bool isAudio)
         AnalyzeDelegate* delegate = new AnalyzeDelegate(m_filter);
         connect(job, &AbstractJob::finished, delegate, &AnalyzeDelegate::onAnalyzeFinished);
         connect(job, &AbstractJob::finished, this, &QmlFilter::analyzeFinished);
-        QFileInfo info(QString::fromUtf8(service.get("resource")));
-        job->setLabel(tr("Analyze %1").arg(info.fileName()));
+        job->setLabel(tr("Analyze %1").arg(Util::baseName(ProxyManager::resource(service))));
 
         // Touch the target .stab file. This prevents multiple jobs from trying
         // to write the same file.
@@ -424,7 +435,7 @@ QString QmlFilter::timeFromFrames(int frames, TimeFormat format)
 void QmlFilter::getHash()
 {
     if (m_filter.is_valid())
-        MAIN.getHash(m_filter);
+        Util::getHash(m_filter);
 }
 
 int QmlFilter::in()
@@ -511,12 +522,11 @@ int QmlFilter::duration()
 Mlt::Animation QmlFilter::getAnimation(const QString& name)
 {
     if (m_filter.is_valid()) {
-        const char* propertyName = name.toUtf8().constData();
-        if (!m_filter.get_animation(propertyName)) {
+        if (!m_filter.get_animation(qUtf8Printable(name))) {
             // Cause a string property to be interpreted as animated value.
-            m_filter.anim_get_double(propertyName, 0, duration());
+            m_filter.anim_get_double(qUtf8Printable(name), 0, duration());
         }
-        return m_filter.get_animation(propertyName);
+        return m_filter.get_animation(qUtf8Printable(name));
     }
     return Mlt::Animation();
 }
@@ -528,7 +538,7 @@ int QmlFilter::keyframeCount(const QString& name)
 
 void QmlFilter::resetProperty(const QString& name)
 {
-    m_filter.clear(name.toUtf8().constData());
+    m_filter.clear(qUtf8Printable(name));
     emit changed();
 }
 
@@ -551,7 +561,6 @@ void QmlFilter::preset(const QString &name)
 
     auto fileName = dir.filePath(QUrl::toPercentEncoding(name));
 
-#if LIBMLT_VERSION_INT >= ((6<<16)+(9<<8))
     // Detect the preset file format
     bool isYaml = false;
     QFile presetFile(fileName);
@@ -573,7 +582,7 @@ void QmlFilter::preset(const QString &name)
 
     if(isYaml) {
         // Load from YAML file.
-        QScopedPointer<Mlt::Properties> properties(Mlt::Properties::parse_yaml(fileName.toUtf8().constData()));
+        QScopedPointer<Mlt::Properties> properties(Mlt::Properties::parse_yaml(qUtf8Printable(fileName)));
         if (properties && properties->is_valid()) {
             QChar decimalPoint = MLT.decimalPoint();
             for (int i = 0; i < properties->count(); i++) {
@@ -583,17 +592,14 @@ void QmlFilter::preset(const QString &name)
                 // Convert numeric strings to the current MLT numeric locale.
                 QString value = QString::fromUtf8(properties->get(i));
                 if (Util::convertDecimalPoints(value, decimalPoint))
-                    properties->set(name.toUtf8().constData(), value.toUtf8().constData());
+                    properties->set(qUtf8Printable(name), qUtf8Printable(value));
             }
             m_filter.inherit(*properties);
         }
     } else {
         // Load from legacy preset file
-        m_filter.load(fileName.toUtf8().constData());
+        m_filter.load(qUtf8Printable(fileName));
     }
-#else
-    m_filter.load(fileName.toUtf8().constData());
-#endif
 
     emit changed();
 }
@@ -643,20 +649,18 @@ bool QmlFilter::isAtLeastVersion(const QString& version)
     return v2 >= v1;
 }
 
+void QmlFilter::deselect()
+{
+    MAIN.filterController()->setCurrentFilter(-2);
+}
+
 AnalyzeDelegate::AnalyzeDelegate(Mlt::Filter& filter)
     : QObject(0)
-#if LIBMLT_VERSION_INT >= MLT_VERSION_CPP_UPDATED
     , m_uuid(QUuid::createUuid())
     , m_serviceName(filter.get("mlt_service"))
 {
     filter.set(kShotcutHashProperty, m_uuid.toByteArray().data());
 }
-#else
-    , m_filter(filter)
-{}
-#endif
-
-#if LIBMLT_VERSION_INT >= MLT_VERSION_CPP_UPDATED
 
 class FindFilterParser : public Mlt::Parser
 {
@@ -749,14 +753,11 @@ void AnalyzeDelegate::updateJob(EncodeJob* job, const QString& results)
     }
 }
 
-#endif
-
 void AnalyzeDelegate::onAnalyzeFinished(AbstractJob *job, bool isSuccess)
 {
     QString fileName = job->objectName();
 
     if (isSuccess) {
-#if LIBMLT_VERSION_INT >= MLT_VERSION_CPP_UPDATED
         QString results = resultsFromXml(fileName, m_serviceName);
         if (!results.isEmpty()) {
             // look for filters by UUID in each pending export job.
@@ -790,13 +791,6 @@ void AnalyzeDelegate::onAnalyzeFinished(AbstractJob *job, bool isSuccess)
             }
             emit MAIN.filterController()->attachedModel()->changed();
         }
-#else
-        QString results = resultsFromXml(fileName, m_filter.get("mlt_service"));
-        if (!results.isEmpty()) {
-            updateFilter(m_filter, results);
-            emit MAIN.filterController()->attachedModel()->changed();
-        }
-#endif
     } else if (!job->property("filename").isNull()) {
         QFile file(job->property("filename").toString());
         if (file.exists() && file.size() == 0)
@@ -844,7 +838,7 @@ QString AnalyzeDelegate::resultsFromXml(const QString& fileName, const QString& 
 
 void AnalyzeDelegate::updateFilter(Mlt::Filter& filter, const QString& results)
 {
-    filter.set("results", results.toUtf8().constData());
+    filter.set("results", qUtf8Printable(results));
     filter.set("reload", 1);
     filter.clear(kShotcutHashProperty);
     LOG_INFO() << "updated filter" << filter.get("mlt_service") << "with results:" << results;

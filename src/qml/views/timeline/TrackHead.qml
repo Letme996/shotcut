@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 Meltytech, LLC
+ * Copyright (c) 2013-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  */
 
 import QtQuick 2.0
-import QtQuick.Controls 1.0
+import QtQuick.Controls 1.4
 import QtQuick.Controls.Styles 1.0
 import QtQuick.Layouts 1.0
 import Shotcut.Controls 1.0
@@ -128,7 +128,7 @@ Rectangle {
                 visible: focus
                 width: parent.width
                 text: trackName
-                onAccepted: {
+                onEditingFinished: {
                     timeline.setTrackName(index, text)
                     focus = false
                 }
@@ -136,6 +136,34 @@ Rectangle {
         }
         RowLayout {
             spacing: 8
+            ToolButton {
+                id: lockButton
+                implicitWidth: 18
+                implicitHeight: 18
+                height: width
+                iconName: isLocked ? 'object-locked' : 'object-unlocked'
+                iconSource: isLocked ? 'qrc:///icons/oxygen/32x32/status/object-locked.png' : 'qrc:///icons/oxygen/32x32/status/object-unlocked.png'
+                onClicked: timeline.setTrackLock(index, !isLocked)
+                tooltip: isLocked? qsTr('Unlock track') : qsTr('Lock track')
+
+                SequentialAnimation {
+                    id: lockButtonAnim
+                    loops: 2
+                    NumberAnimation {
+                        target: lockButton
+                        property: 'width'
+                        to: 32
+                        duration: 200
+                    }
+                    NumberAnimation {
+                        target: lockButton
+                        property: 'width'
+                        to: 18
+                        duration: 200
+                    }
+                }
+            }
+
             ToolButton {
                 id: muteButton
                 implicitWidth: 18
@@ -155,16 +183,6 @@ Rectangle {
                 iconSource: isHidden? 'qrc:///icons/oxygen/32x32/actions/layer-visible-off.png' : 'qrc:///icons/oxygen/32x32/actions/layer-visible-on.png'
                 onClicked: timeline.toggleTrackHidden(index)
                 tooltip: isHidden? qsTr('Show') : qsTr('Hide')
-            }
-
-            ToolButton {
-                id: lockButton
-                implicitWidth: 18
-                implicitHeight: 18
-                iconName: isLocked ? 'object-locked' : 'object-unlocked'
-                iconSource: isLocked ? 'qrc:///icons/oxygen/32x32/status/object-locked.png' : 'qrc:///icons/oxygen/32x32/status/object-unlocked.png'
-                onClicked: timeline.setTrackLock(index, !isLocked)
-                tooltip: isLocked? qsTr('Unlock track') : qsTr('Lock track')
             }
 
             ToolButton {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Meltytech, LLC
+ * Copyright (c) 2014-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,19 +27,42 @@ Item {
     property string rectProperty
     property string valignProperty
     property string halignProperty
+    property string backgroundProperty
+    property string rotationProperty
     property rect filterRect
     property string startValue: '_shotcut:startValue'
     property string middleValue: '_shotcut:middleValue'
     property string endValue:  '_shotcut:endValue'
+    property string rotationStartValue: '_shotcut:rotationStartValue'
+    property string rotationMiddleValue: '_shotcut:rotationMiddleValue'
+    property string rotationEndValue:  '_shotcut:rotationEndValue'
+    property bool blockUpdate: true
+    property rect defaultRect
+    property real aspectRatio: producer.displayAspectRatio
 
-    width: 350
-    height: 180
+    width: 425
+    height: 250
 
     Component.onCompleted: {
+        if (rotationProperty) {
+            preset.parameters.push(rotationProperty)
+        }
+
         filter.blockSignals = true
         filter.set(middleValue, Qt.rect(0, 0, profile.width, profile.height))
         filter.set(startValue, Qt.rect(0, 0, profile.width, profile.height))
         filter.set(endValue, Qt.rect(0, 0, profile.width, profile.height))
+        // Compute the default rectangle used also for parameter undos
+        // Enforce the aspect ratio for fill mode
+        if (producer.displayAspectRatio > profile.aspectRatio) {
+            defaultRect.width = profile.width
+            defaultRect.height = defaultRect.width / producer.displayAspectRatio
+        } else {
+            defaultRect.height = profile.height
+            defaultRect.width = defaultRect.height * producer.displayAspectRatio
+        }
+        defaultRect.x = Math.round((profile.width - defaultRect.width) / 2)
+        defaultRect.y = Math.round((profile.height - defaultRect.height) / 2)
         if (filter.isNew) {
             filter.set(fillProperty, 0)
             filter.set(distortProperty, 0)
@@ -180,9 +203,10 @@ Item {
             filter.resetProperty(rectProperty)
 
             // Add default preset.
-            filter.set(rectProperty,   '0%/0%:100%x100%')
-            filter.set(valignProperty, 'top')
-            filter.set(halignProperty, 'left')
+            if (backgroundProperty)
+                filter.set(backgroundProperty, 'color:#00000000')
+            filter.set(rectProperty, defaultRect)
+            filter.get(rectProperty)
             filter.savePreset(preset.parameters)
         } else {
             if (legacyRectProperty !== null) {
@@ -197,16 +221,38 @@ Item {
                 filter.set(startValue, filter.getRect(rectProperty, 0))
             if (filter.animateOut > 0)
                 filter.set(endValue, filter.getRect(rectProperty, filter.duration - 1))
+            filter.set(rotationMiddleValue, filter.getDouble(rotationProperty, filter.animateIn + 1))
+            if (filter.animateIn > 0)
+                filter.set(rotationStartValue, filter.getDouble(rotationProperty, 0))
+            if (filter.animateOut > 0)
+                filter.set(rotationEndValue, filter.getRect(rotationProperty, filter.duration - 1))
         }
+        updateAspectRatio()
         filter.blockSignals = false
         setControls()
         setKeyframedControls()
         if (filter.isNew)
-            filter.set(rectProperty, filter.getRect(rectProperty))
+            setFilter(getPosition())
     }
 
     function getPosition() {
         return Math.max(producer.position - (filter.in - producer.in), 0)
+    }
+
+    function isFitMode() {
+        return filter.get(fillProperty) === '0' && filter.get(distortProperty) === '0'
+    }
+
+    function isFillMode() {
+        return filter.get(fillProperty) === '1' && filter.get(distortProperty) !== '1'
+    }
+
+    function updateAspectRatio() {
+        if (filter.get(fillProperty) === '1' && filter.get(distortProperty) === '0') {
+            aspectRatio = producer.displayAspectRatio
+        } else {
+            aspectRatio = filterRect.width / Math.max(filterRect.height, 1)
+        }
     }
 
     function setFilter(position) {
@@ -240,6 +286,39 @@ Item {
         }
     }
 
+    function updateRotation(position) {
+        if (blockUpdate) return
+        if (position !== null) {
+            filter.blockSignals = true
+            if (position <= 0 && filter.animateIn > 0) {
+                filter.set(rotationStartValue, rotationSlider.value)
+            } else if (position >= filter.duration - 1 && filter.animateOut > 0) {
+                filter.set(rotationEndValue, rotationSlider.value)
+            } else {
+                filter.set(rotationMiddleValue, rotationSlider.value)
+            }
+            filter.blockSignals = false
+        }
+
+        if (filter.animateIn > 0 || filter.animateOut > 0) {
+            filter.resetProperty(rotationProperty)
+            rotationKeyframesButton.checked = false
+            if (filter.animateIn > 0) {
+                filter.set(rotationProperty, filter.getDouble(rotationStartValue), 0)
+                filter.set(rotationProperty, filter.getDouble(rotationMiddleValue), filter.animateIn - 1)
+            }
+            if (filter.animateOut > 0) {
+                filter.set(rotationProperty, filter.getDouble(rotationMiddleValue), filter.duration - filter.animateOut)
+                filter.set(rotationProperty, filter.getDouble(rotationEndValue), filter.duration - 1)
+            }
+        } else if (!rotationKeyframesButton.checked) {
+            filter.resetProperty(rotationProperty)
+            filter.set(rotationProperty, filter.getDouble(rotationMiddleValue))
+        } else if (position !== null) {
+            filter.set(rotationProperty, rotationSlider.value, position)
+        }
+    }
+
     function setControls() {
         if (filter.get(distortProperty) === '1')
             distortRadioButton.checked = true
@@ -252,7 +331,7 @@ Item {
             leftRadioButton.checked = true
         else if (align === 'center' || align === 'middle')
             centerRadioButton.checked = true
-        else if (filter.get(halignProperty) === 'right')
+        else if (align === 'right')
             rightRadioButton.checked = true
         align = filter.get(valignProperty)
         if (align === 'top')
@@ -261,23 +340,125 @@ Item {
             middleRadioButton.checked = true
         else if (align === 'bottom')
             bottomRadioButton.checked = true
+        if (backgroundProperty) {
+            var s = filter.get(backgroundProperty)
+            if (s.substring(0, 6) === 'color:')
+                bgColor.value = s.substring(6)
+            else if  (s.substring(0, 7) === 'colour:')
+                bgColor.value = s.substring(7)
+        }
+    }
+
+    function isSimpleKeyframesActive() {
+        var position = getPosition()
+        return  position <= 0
+            || (position >= (filter.animateIn - 1) &&
+                position <= (filter.duration - filter.animateOut))
+            ||  position >= (filter.duration - 1)
     }
 
     function setKeyframedControls() {
+        var enabled = isSimpleKeyframesActive()
         var position = getPosition()
         var newValue = filter.getRect(rectProperty, position)
         if (filterRect !== newValue) {
+            updateAspectRatio()
+            if (isFillMode()) {
+                // enforce the aspect ratio
+                if (producer.displayAspectRatio > profile.aspectRatio) {
+                    newValue.height = newValue.width / producer.displayAspectRatio
+                } else {
+                    newValue.width = newValue.height * producer.displayAspectRatio
+                }
+            }
             filterRect = newValue
-            rectX.text = filterRect.x.toFixed()
-            rectY.text = filterRect.y.toFixed()
-            rectW.text = filterRect.width.toFixed()
-            rectH.text = filterRect.height.toFixed()
+            rectX.value = filterRect.x.toFixed()
+            rectY.value = filterRect.y.toFixed()
+            rectW.value = filterRect.width.toFixed()
+            rectH.value = filterRect.height.toFixed()
+            blockUpdate = true
+            scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
         }
-        var enabled = position <= 0 || (position >= (filter.animateIn - 1) && position <= (filter.duration - filter.animateOut)) || position >= (filter.duration - 1)
+        if (rotationProperty) {
+            blockUpdate = true
+            rotationSlider.value = filter.getDouble(rotationProperty, position)
+            rotationSlider.enabled = enabled
+        }
+        blockUpdate = false
         rectX.enabled = enabled
         rectY.enabled = enabled
         rectW.enabled = enabled
         rectH.enabled = enabled
+    }
+
+    function toggleKeyframes(isEnabled, parameter, value) {
+        if (isEnabled) {
+            blockUpdate = true
+            if (filter.animateIn > 0 || filter.animateOut > 0) {
+                // Reset all of the simple keyframes.
+                resetSimpleKeyframes()
+                filter.animateIn = 0
+                blockUpdate = false
+                filter.animateOut = 0
+            } else {
+                filter.clearSimpleAnimation(parameter)
+                blockUpdate = false
+            }
+            // Set this keyframe value.
+            filter.set(parameter, value, getPosition())
+        } else {
+            // Remove keyframes and set the parameter.
+            filter.resetProperty(parameter)
+            filter.set(parameter, value)
+        }
+    }
+
+    function scaleByWidth(value) {
+        var centerX = filterRect.x + filterRect.width / 2
+        var rightX = filterRect.x + filterRect.width
+        filterRect.width = value
+        if (centerRadioButton.checked) {
+            filterRect.x = rectX.value = centerX - filterRect.width / 2
+        } else if (rightRadioButton.checked) {
+            filterRect.x = rectX.value = rightX - filterRect.width
+        }
+        var middleY = filterRect.y + filterRect.height / 2
+        var bottomY = filterRect.y + filterRect.height
+        filterRect.height = rectH.value = Math.round(value / Math.max(aspectRatio, 1.0e-6))
+        if (middleRadioButton.checked) {
+            filterRect.y = rectY.value = middleY - filterRect.height / 2
+        }
+        else if (bottomRadioButton.checked) {
+            filterRect.y = rectY.value = bottomY - filterRect.height
+        }
+        blockUpdate = true
+        scaleSlider.value = Math.min(rectW.value / profile.width * 100, scaleSlider.maximumValue)
+        blockUpdate = false
+        setFilter(getPosition())
+    }
+
+    function scaleByHeight(value) {
+        var middleY = filterRect.y + filterRect.height / 2
+        var bottomY = filterRect.y + filterRect.height
+        filterRect.height = value
+        if (middleRadioButton.checked) {
+            filterRect.y = rectY.value = middleY - filterRect.height / 2
+        } else if (bottomRadioButton.checked) {
+            filterRect.y = rectY.value = bottomY - filterRect.height
+        }
+        var centerX = filterRect.x + filterRect.width / 2
+        var rightX = filterRect.x + filterRect.width
+        filterRect.width = rectW.value = Math.round(value * aspectRatio)
+        if (centerRadioButton.checked) {
+            filterRect.x = rectX.value = centerX - filterRect.width / 2
+        }
+        else if (rightRadioButton.checked) {
+            filterRect.x = rectX.value = rightX - filterRect.width
+        }
+        blockUpdate = true
+        scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
+        blockUpdate = false
+        setFilter(getPosition())
     }
 
     ExclusiveGroup { id: sizeGroup }
@@ -299,6 +480,7 @@ Item {
             Layout.columnSpan: 5
             onBeforePresetLoaded: {
                 filter.resetProperty(rectProperty)
+                filter.resetProperty(rotationProperty)
             }
             onPresetSelected: {
                 setControls()
@@ -310,6 +492,11 @@ Item {
                     filter.set(startValue, filter.getRect(rectProperty, 0))
                 if (filter.animateOut > 0)
                     filter.set(endValue, filter.getRect(rectProperty, filter.duration - 1))
+                filter.set(rotationMiddleValue, filter.getDouble(rotationProperty, filter.animateIn + 1))
+                if (filter.animateIn > 0)
+                    filter.set(rotationStartValue, filter.getDouble(rotationProperty, 0))
+                if (filter.animateOut > 0)
+                    filter.set(rotationEndValue, filter.getRect(rotationProperty, filter.duration - 1))
                 filter.blockSignals = false
             }
         }
@@ -320,44 +507,88 @@ Item {
         }
         RowLayout {
             Layout.columnSpan: 3
-            TextField {
+            SpinBox {
                 id: rectX
                 horizontalAlignment: Qt.AlignRight
-                onEditingFinished: if (filterRect.x !== parseFloat(text)) {
-                    filterRect.x = parseFloat(text)
-                    setFilter(getPosition())
+                Layout.minimumWidth: 100
+                decimals: 0
+                stepSize: 1
+                minimumValue: -999999999
+                maximumValue: 999999999
+                onValueChanged: {
+                    if (hovered && Math.abs(filterRect.x - value) >= 1) {
+                        filterRect.x = value
+                        setFilter(getPosition())
+                    }
+                }
+                onEditingFinished: {
+                    if (Math.abs(filterRect.x - value) >= 1) {
+                        filterRect.x = value
+                        setFilter(getPosition())
+                    }
                 }
             }
             Label { text: ',' }
-            TextField {
+            SpinBox {
                 id: rectY
                 horizontalAlignment: Qt.AlignRight
-                onEditingFinished: if (filterRect.y !== parseFloat(text)) {
-                    filterRect.y = parseFloat(text)
-                    setFilter(getPosition())
+                Layout.minimumWidth: 100
+                decimals: 0
+                stepSize: 1
+                minimumValue: -999999999
+                maximumValue: 999999999
+                onValueChanged: {
+                    if (hovered && Math.abs(filterRect.y - value) >= 1) {
+                        filterRect.y = value
+                        setFilter(getPosition())
+                    }
+                }
+                onEditingFinished: {
+                    if (Math.abs(filterRect.y - value) >= 1) {
+                        filterRect.y = value
+                        setFilter(getPosition())
+                    }
                 }
             }
         }
         UndoButton {
             onClicked: {
-                rectX.text = rectY.text = 0
-                filterRect.x = filterRect.y = 0
+                filterRect.x = rectX.value = defaultRect.x
+                filterRect.y = rectY.value = defaultRect.y
                 setFilter(getPosition())
             }
         }
-        KeyframesButton {
-            id: positionKeyframesButton
-            Layout.rowSpan: 2
-            checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
-            onToggled: {
-                if (checked) {
-                    filter.clearSimpleAnimation(rectProperty)
-                    filter.set(rectProperty, filterRect, 1.0, getPosition())
-                } else {
-                    filter.resetProperty(rectProperty)
-                    filter.set(rectProperty, filterRect)
+        ColumnLayout {
+            Layout.rowSpan: 3
+            height: positionKeyframesButton.height * 3
+            SystemPalette { id: activePalette }
+            Rectangle {
+                color: activePalette.text
+                width: 1
+                height: positionKeyframesButton.height
+                anchors.horizontalCenter: positionKeyframesButton.horizontalCenter
+            }
+            KeyframesButton {
+                id: positionKeyframesButton
+                checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
+                onToggled: {
+                    if (checked) {
+                        blockUpdate = true
+                        filter.clearSimpleAnimation(rectProperty)
+                        blockUpdate = false
+                        filter.set(rectProperty, filterRect, 1.0, getPosition())
+                    } else {
+                        filter.resetProperty(rectProperty)
+                        filter.set(rectProperty, filterRect)
+                    }
+                    checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
                 }
-                checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
+            }
+            Rectangle {
+                color: activePalette.text
+                width: 1
+                height: positionKeyframesButton.height
+                anchors.horizontalCenter: positionKeyframesButton.horizontalCenter
             }
         }
 
@@ -367,31 +598,118 @@ Item {
         }
         RowLayout {
             Layout.columnSpan: 3
-            TextField {
+            SpinBox {
                 id: rectW
                 horizontalAlignment: Qt.AlignRight
-                onEditingFinished: if (filterRect.width !== parseFloat(text)) {
-                    filterRect.width = parseFloat(text)
-                    setFilter(getPosition())
+                Layout.minimumWidth: 100
+                decimals: 0
+                stepSize: 1
+                minimumValue: 0
+                maximumValue: 999999999
+                onValueChanged: {
+                    if (hovered && Math.abs(filterRect.width - value) >= 1) {
+                        if (isFillMode()) {
+                            scaleByWidth(value)
+                        } else {
+                            filterRect.width = value
+                            setFilter(getPosition())
+                        }
+                    }
+                }
+                onEditingFinished: {
+                    if (Math.abs(filterRect.width - value) >= 1) {
+                        if (isFillMode()) {
+                            scaleByWidth(value)
+                        } else {
+                            filterRect.width = value
+                            setFilter(getPosition())
+                        }
+                    }
                 }
             }
             Label { text: 'x' }
-            TextField {
+            SpinBox {
                 id: rectH
                 horizontalAlignment: Qt.AlignRight
-                onEditingFinished: if (filterRect.height !== parseFloat(text)) {
-                    filterRect.height = parseFloat(text)
+                Layout.minimumWidth: 100
+                decimals: 0
+                stepSize: 1
+                minimumValue: 0
+                maximumValue: 999999999
+                onValueChanged: {
+                    if (hovered && Math.abs(filterRect.height - value) >= 1) {
+                        if (isFillMode()) {
+                            scaleByHeight(value)
+                        } else {
+                            filterRect.height = value
+                            setFilter(getPosition())
+                        }
+                    }
+                }
+                onEditingFinished: {
+                    if (Math.abs(filterRect.height - value) >= 1) {
+                        if (isFillMode()) {
+                            scaleByHeight(value)
+                        } else {
+                            filterRect.height = value
+                            setFilter(getPosition())
+                        }
+                    }
+                }
+            }
+        }
+        UndoButton {
+            id: sizeUndoButton
+            onClicked: {
+                filterRect.width = rectW.value = defaultRect.width
+                filterRect.height = rectH.value = defaultRect.height
+                scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
+                setFilter(getPosition())
+            }
+        }
+
+        Label {
+            text: qsTr('Zoom')
+            Layout.alignment: Qt.AlignRight
+        }
+        SliderSpinner {
+            id: scaleSlider
+            Layout.columnSpan: 3
+            minimumValue: 0.1
+            maximumValue: 1000
+            decimals: 1
+            suffix: ' %'
+            onValueChanged: {
+                if (!blockUpdate && Math.abs(value - filterRect.width * 100 / profile.width) > 0.1) {
+                    var centerX = filterRect.x + filterRect.width / 2
+                    var rightX = filterRect.x + filterRect.width
+                    filterRect.width = rectW.value = (profile.width * value / 100)
+                    if (centerRadioButton.checked) {
+                        filterRect.x = rectX.value = centerX - filterRect.width / 2
+                    } else if (rightRadioButton.checked) {
+                        filterRect.x = rectX.value = rightX - filterRect.width
+                    }
+                    var middleY = filterRect.y + filterRect.height / 2
+                    var bottomY = filterRect.y + filterRect.height
+                    filterRect.height = rectH.value = Math.round(filterRect.width / Math.max(aspectRatio, 1.0e-6))
+                    if (middleRadioButton.checked) {
+                        filterRect.y = rectY.value = middleY - filterRect.height / 2
+                    } else if (bottomRadioButton.checked) {
+                        filterRect.y = rectY.value = bottomY - filterRect.height
+                    }
                     setFilter(getPosition())
                 }
             }
         }
         UndoButton {
+            enabled: scaleSlider.enabled
             onClicked: {
-                rectW.text = profile.width
-                rectH.text = profile.height
-                filterRect.width = profile.width
-                filterRect.height = profile.height
-                setFilter(getPosition())
+                if (isFitMode()) {
+                    scaleSlider.value = 100
+                } else {
+                    var width = (producer.displayAspectRatio > 1.0)? profile.width : profile.height * producer.displayAspectRatio
+                    scaleSlider.value = Math.min(width / profile.width * 100, scaleSlider.maximumValue)
+                }
             }
         }
 
@@ -406,6 +724,7 @@ Item {
             onClicked: {
                 filter.set(fillProperty, 0)
                 filter.set(distortProperty, 0)
+                updateAspectRatio()
             }
         }
         RadioButton {
@@ -415,6 +734,14 @@ Item {
             onClicked: {
                 filter.set(fillProperty, 1)
                 filter.set(distortProperty, 0)
+                updateAspectRatio()
+                // enforce the aspect ratio
+                if (producer.displayAspectRatio > profile.aspectRatio) {
+                    filterRect.height = rectH.value = filterRect.width / producer.displayAspectRatio
+                } else {
+                    filterRect.width = rectW.value = filterRect.height * producer.displayAspectRatio
+                }
+                setFilter(getPosition())
             }
         }
         RadioButton {
@@ -424,16 +751,18 @@ Item {
             onClicked: {
                 filter.set(fillProperty, 1)
                 filter.set(distortProperty, 1)
+                updateAspectRatio()
             }
         }
         UndoButton {
             onClicked: {
-                fillRadioButton.checked = true
-                filter.set(fillProperty, 1)
+                fitRadioButton.checked = true
+                filter.set(fillProperty, 0)
                 filter.set(distortProperty, 0)
+                updateAspectRatio()
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Horizontal fit')
@@ -443,21 +772,18 @@ Item {
             id: leftRadioButton
             text: qsTr('Left')
             exclusiveGroup: halignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(halignProperty, 'left')
         }
         RadioButton {
             id: centerRadioButton
             text: qsTr('Center')
             exclusiveGroup: halignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(halignProperty, 'center')
         }
         RadioButton {
             id: rightRadioButton
             text: qsTr('Right')
             exclusiveGroup: halignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(halignProperty, 'right')
         }
         UndoButton {
@@ -466,7 +792,7 @@ Item {
                 filter.set(halignProperty, 'left')
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
 
         Label {
             text: qsTr('Vertical fit')
@@ -476,21 +802,18 @@ Item {
             id: topRadioButton
             text: qsTr('Top')
             exclusiveGroup: valignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(valignProperty, 'top')
         }
         RadioButton {
             id: middleRadioButton
             text: qsTr('Middle', 'Size and Position video filter')
             exclusiveGroup: valignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(valignProperty, 'middle')
         }
         RadioButton {
             id: bottomRadioButton
             text: qsTr('Bottom')
             exclusiveGroup: valignGroup
-            enabled: fitRadioButton.checked
             onClicked: filter.set(valignProperty, 'bottom')
         }
         UndoButton {
@@ -499,22 +822,90 @@ Item {
                 filter.set(valignProperty, 'top')
             }
         }
-        Item { Layout.fillWidth: true }
+        Item { width: 1 }
+
+        Label {
+            text: qsTr('Rotation')
+            Layout.alignment: Qt.AlignRight
+            visible: !!rotationProperty
+        }
+        SliderSpinner {
+            id: rotationSlider
+            Layout.columnSpan: 3
+            visible: !!rotationProperty
+            minimumValue: -360
+            maximumValue: 360
+            decimals: 1
+            suffix: qsTr(' °', 'degrees')
+            onValueChanged: updateRotation(getPosition())
+        }
+        UndoButton {
+            visible: !!rotationProperty
+            onClicked: rotationSlider.value = 0
+        }
+        KeyframesButton {
+            id: rotationKeyframesButton
+            visible: !!rotationProperty
+            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(rotationProperty) > 0
+            onToggled: {
+                toggleKeyframes(checked, rotationProperty, rotationSlider.value)
+                setControls()
+            }
+        }
+
+        Label {
+            text: qsTr('Background color')
+            Layout.alignment: Qt.AlignRight
+            visible: bgColor.visible
+        }
+        ColorPicker {
+            id: bgColor
+            visible: !!backgroundProperty
+            Layout.columnSpan: 3
+            eyedropper: true
+            alpha: true
+            onValueChanged: filter.set(backgroundProperty, 'color:' + value)
+        }
+        UndoButton {
+            visible: bgColor.visible
+            onClicked: bgColor.value = '#00000000'
+        }
+        Item {
+            width: 1
+            visible: bgColor.visible
+        }
 
         Item { Layout.fillHeight: true }
+    }
+
+    function updateSimpleKeyframes() {
+        if (rotationProperty) {
+            updateRotation()
+        }
+        setFilter(null)
     }
 
     Connections {
         target: filter
         onChanged: setKeyframedControls()
-        onInChanged: setFilter(null)
-        onOutChanged: setFilter(null)
-        onAnimateInChanged: setFilter(null)
-        onAnimateOutChanged: setFilter(null)
+        onInChanged: updateSimpleKeyframes()
+        onOutChanged: updateSimpleKeyframes()
+        onAnimateInChanged: updateSimpleKeyframes()
+        onAnimateOutChanged: updateSimpleKeyframes()
     }
 
     Connections {
         target: producer
         onPositionChanged: setKeyframedControls()
+    }
+
+    Connections {
+        target: parameters
+        onKeyframeAdded: {
+            if (parameter == rotationProperty) {
+                var n = filter.getDouble(parameter, position)
+                filter.set(parameter, n, position)
+            }
+        }
     }
 }

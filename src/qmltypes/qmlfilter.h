@@ -30,8 +30,6 @@
 #include "qmlmetadata.h"
 #include "shotcut_mlt_properties.h"
 
-#define MLT_VERSION_CPP_UPDATED ((6<<16)+(17<<8))
-
 class AbstractJob;
 class EncodeJob;
 
@@ -108,6 +106,7 @@ public:
     Q_INVOKABLE int keyframeCount(const QString& name);
     mlt_keyframe_type getKeyframeType(Mlt::Animation& animation, int position, mlt_keyframe_type defaultType);
     Q_INVOKABLE bool isAtLeastVersion(const QString& version);
+    Q_INVOKABLE static void deselect();
 
 public slots:
     void preset(const QString& name);
@@ -147,14 +146,10 @@ public slots:
 private:
     QString resultsFromXml(const QString& fileName, const QString& serviceName);
     void updateFilter(Mlt::Filter& filter, const QString& results);
-#if LIBMLT_VERSION_INT >= MLT_VERSION_CPP_UPDATED
     void updateJob(EncodeJob* job, const QString& results);
 
     QUuid m_uuid;
     QString m_serviceName;
-#else
-    Mlt::Filter m_filter;
-#endif
 };
 
 #endif // FILTER_H

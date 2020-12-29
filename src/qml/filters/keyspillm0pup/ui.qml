@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 Meltytech, LLC
+ * Copyright (c) 2015-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.0
 import QtQuick.Controls 1.1
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.1
 import Shotcut.Controls 1.0
 
@@ -54,6 +55,7 @@ Item {
     width: 200
     height: 380
     Component.onCompleted: {
+        filter.set('threads', 0)
         if (filter.isNew) {
             filter.set(keyColorParam, keyColorDefault)
             filter.set(targetColorParam, targetColorDefault)
@@ -155,14 +157,17 @@ Item {
             text: qsTr('Mask type')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: maskTypeCombo
             implicitWidth: 180
             model: [qsTr('Color Distance'), qsTr('Transparency'), qsTr('Edge Inwards'), qsTr('Edge Outwards')]
-            onCurrentIndexChanged: filter.set(maskTypeParam, currentIndex)
+            onActivated: filter.set(maskTypeParam, currentIndex)
         }
         UndoButton {
-            onClicked: maskTypeCombo.currentIndex = maskTypeDefault
+            onClicked: {
+                filter.set(maskTypeParam, maskTypeDefault)
+                maskTypeCombo.currentIndex = maskTypeDefault
+            }
         }
 
         Label {
@@ -237,14 +242,17 @@ Item {
             text: qsTr('Operation 1')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: operation1Combo
             implicitWidth: 180
             model: [qsTr('None'), qsTr('De-Key'), qsTr('Desaturate'), qsTr('Adjust Luma')]
-            onCurrentIndexChanged: filter.set(operation1Param, currentIndex)
+            onActivated: filter.set(operation1Param, currentIndex)
         }
         UndoButton {
-            onClicked: operation1Combo.currentIndex = operation1Default
+            onClicked: {
+                filter.set(operation1Param, operation1Default)
+                operation1Combo.currentIndex = operation1Default
+            }
         }
 
         Label {
@@ -268,14 +276,17 @@ Item {
             text: qsTr('Operation 2')
             Layout.alignment: Qt.AlignRight
         }
-        ComboBox {
+        Controls2.ComboBox {
             id: operation2Combo
             implicitWidth: 180
             model: [qsTr('None'), qsTr('De-Key'), qsTr('Desaturate'), qsTr('Adjust Luma')]
-            onCurrentIndexChanged: filter.set(operation2Param, currentIndex)
+            onActivated: filter.set(operation2Param, currentIndex)
         }
         UndoButton {
-            onClicked: operation2Combo.currentIndex = operation2Default
+            onClicked: {
+                filter.set(operation2Param, operation2Default)
+                operation2Combo.currentIndex = operation2Default
+            }
         }
 
         Label {

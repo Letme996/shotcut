@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Meltytech, LLC
+ * Copyright (c) 2019-2020 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 import QtQuick 2.0
 import QtQuick.Controls 1.1
+import QtQuick.Controls 2.12 as Controls2
 import QtQuick.Layouts 1.1
 import Shotcut.Controls 1.0
 
@@ -24,12 +25,12 @@ KeyframableFilter {
     property string levels: '0'
     property string matrixid: '1'
     property double levelsDefault: 0.1
-    property double matrixidDefault: 0.01
+    property double matrixidDefault: 0
 
-    keyframableParameters: [levels, matrixid]
-    startValues: [0.5, 0.5]
-    middleValues: [levelsDefault, matrixidDefault]
-    endValues: [0.5, 0.5]
+    keyframableParameters: [levels]
+    startValues: [0.5]
+    middleValues: [levelsDefault]
+    endValues: [0.5]
 
     width: 350
     height: 100
@@ -47,18 +48,17 @@ KeyframableFilter {
         var position = getPosition()
         blockUpdate = true
         levelsSlider.value = filter.getDouble(levels, position) * levelsSlider.maximumValue
-        matrixidSlider.value = filter.getDouble(matrixid, position) * matrixidSlider.maximumValue
+        matrixCombo.currentIndex = filter.getDouble(matrixid) * 9
         blockUpdate = false
         enableControls(isSimpleKeyframesActive())
     }
 
     function enableControls(enabled) {
-        levelsSlider.enabled = matrixidSlider.enabled = enabled
+        levelsSlider.enabled = enabled
     }
 
     function updateSimpleKeyframes() {
         updateFilter(levels, levelsSlider.value / levelsSlider.maximumValue, levelKeyframesButton)
-        updateFilter(matrixid, matrixidSlider.value / matrixidSlider.maximumValue, matrixKeyframesButton)
     }
 
     GridLayout {
@@ -75,8 +75,7 @@ KeyframableFilter {
             parameters: [levels, matrixid]
             Layout.columnSpan: 3
             onBeforePresetLoaded: {
-                filter.resetProperty(levels)
-                filter.resetProperty(matrixid)
+                resetSimpleKeyframes()
             }
             onPresetSelected: {
                 setControls()
@@ -85,7 +84,7 @@ KeyframableFilter {
         }
 
         Label {
-            text: qsTr('Levels')
+            text: qsTr('Levels', 'Dither video filter')
             Layout.alignment: Qt.AlignRight
         }
         SliderSpinner {
@@ -113,25 +112,21 @@ KeyframableFilter {
             text: qsTr('Matrix')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
-            id: matrixidSlider
-            minimumValue: 0.00
-            maximumValue: 100
-            stepSize: 0.1
-            decimals: 1
-            suffix: ' %'
-            onValueChanged: updateFilter(matrixid, matrixidSlider.value / matrixidSlider.maximumValue, matrixKeyframesButton, getPosition())
+        Controls2.ComboBox {
+            id: matrixCombo
+            implicitWidth: 180
+            model: [qsTr('2x2 Magic Square'), qsTr('4x4 Magic Square'), qsTr('4x4 Ordered'), qsTr('4x4 Lines'),
+                qsTr('6x6 90 Degree Halftone'), qsTr('6x6 Ordered'), qsTr('8x8 Ordered'),
+                qsTr('Order-3 Clustered'), qsTr('Order-4 Ordered'), qsTr('Order-8 Ordered')]
+            onActivated: {
+                enabled = false
+                filter.set(matrixid, index / 9)
+                enabled = true
+            }
         }
         UndoButton {
-            onClicked: matrixidSlider.value = matrixidDefault * matrixidSlider.maximumValue
-        }
-        KeyframesButton {
-            id: matrixKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(matrixid) > 0
-            onToggled: {
-                enableControls(true)
-                toggleKeyframes(checked, matrixid, matrixidSlider.value / matrixidSlider.maximumValue)
-            }
+            onClicked: matrixCombo.currentIndex = matrixidDefault * 9
+            Layout.columnSpan: 2
         }
 
         Item {
