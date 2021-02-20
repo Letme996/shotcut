@@ -50,7 +50,7 @@ ZIMG_REVISION=
 DAV1D_HEAD=1
 DAV1D_REVISION=
 AOM_HEAD=1
-AOM_REVISION=1
+AOM_REVISION=
 
 
 # QT_INCLUDE_DIR="$(pkg-config --variable=prefix QtCore)/include"
@@ -1020,6 +1020,7 @@ function deploy
 
   log Reorganizing installed files
   cmd mv bin/*.dll .
+  cmd mv lib/libaom.dll .
   if [ "$SDK" = "1" ]; then
     cmd mv bin/*.exe .
   else
@@ -1075,7 +1076,6 @@ function deploy
   cmd cp -pr "$QTDIR"/qml lib
   sed -i "s/onClicked()/onClicked(mouse)/" lib/qml/QtQuick/Controls/Private/EditMenu_base.qml
   cmd rm lib/qml/QtQuick/Controls/Private/EditMenu_base.qmlc
-#  cmd curl -o lib/qml/QtQuick/Controls.2/Fusion/ComboBox.qml "https://s3.amazonaws.com/misc.meltymedia/shotcut-build/ComboBox.qml"
   cmd cp -pr "$QTDIR"/translations/qt_*.qm share/translations
   cmd cp -pr "$QTDIR"/translations/qtbase_*.qm share/translations
 

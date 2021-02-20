@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Meltytech, LLC
+ * Copyright (c) 2020-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,12 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.1
-import QtQuick.Controls 1.1
-import QtQuick.Controls.Styles 1.1
-import QtQuick.Layouts 1.0
-import QtQuick.Dialogs 1.0
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     width: 400
@@ -94,6 +92,7 @@ Item {
         rectY.enabled = enabled
         rectW.enabled = enabled
         rectH.enabled = enabled
+        positionKeyframesButton.checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
     }
     
     function updateFilterRatio(position) {
@@ -177,7 +176,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             parameters: [rectProperty, 'radius', 'color']
             Layout.columnSpan: 3
@@ -190,7 +189,6 @@ Item {
                 setRatioControls()
                 setRectControls()
                 colorSwatch.value = filter.get('color')
-                positionKeyframesButton.checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
                 filter.blockSignals = true
                 middleValueRadius = filter.getDouble('radius', filter.animateIn)
                 filter.set(middleValueRect, filter.getRect(rectProperty, filter.animateIn + 1))
@@ -214,6 +212,7 @@ Item {
             TextField {
                 id: rectX
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: if (filterRect.x !== parseFloat(text)) {
                     filterRect.x = parseFloat(text)
                     updateFilterRect(getPosition(), true)
@@ -223,23 +222,23 @@ Item {
             TextField {
                 id: rectY
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: if (filterRect.y !== parseFloat(text)) {
                     filterRect.y = parseFloat(text)
                     updateFilterRect(getPosition(), true)
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 rectX.text = rectY.text = 0
                 filterRect.x = filterRect.y = 0
                 updateFilterRect(getPosition(), true)
             }
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: positionKeyframesButton
             Layout.rowSpan: 2
-            checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
             onToggled: {
                 if (checked) {
                     filter.blockSignals = true
@@ -262,6 +261,7 @@ Item {
             TextField {
                 id: rectW
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: if (filterRect.width !== parseFloat(text)) {
                     filterRect.width = parseFloat(text)
                     updateFilterRect(getPosition(), true)
@@ -271,13 +271,14 @@ Item {
             TextField {
                 id: rectH
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: if (filterRect.height !== parseFloat(text)) {
                     filterRect.height = parseFloat(text)
                     updateFilterRect(getPosition(), true)
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 rectW.text = profile.width
                 rectH.text = profile.height
@@ -291,7 +292,7 @@ Item {
             text: qsTr('Corner radius')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: slider
             minimumValue: 0
             maximumValue: 100
@@ -299,12 +300,11 @@ Item {
             suffix: ' %'
             onValueChanged: updateFilterRatio(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: slider.value = 0
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: radiusKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount('radius') > 0
             onToggled: {
                 var value = slider.value / 100.0
                 if (checked) {
@@ -324,7 +324,7 @@ Item {
             Layout.alignment: Qt.AlignRight
         }
         RowLayout {
-            ColorPicker {
+            Shotcut.ColorPicker {
                 id: colorSwatch
                 alpha: true
                 property bool isReady: false
@@ -340,12 +340,12 @@ Item {
                 }
                 onPickCancelled: filter.set('disable', 0)
             }
-            Button {
+            Shotcut.Button {
                 text: qsTr('Transparent')
                 onClicked: colorSwatch.value = '#00000000'
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: colorSwatch.value = '#FF000000'
         }
         Item { width: 1 }

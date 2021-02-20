@@ -15,11 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.2
-import QtQuick.Controls 1.1
+import QtQuick 2.12
+import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
-import QtQuick.Controls.Styles 1.1
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     property var defaultParameters: []
@@ -66,7 +65,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: presetItem
             Layout.columnSpan: 2
             onPresetSelected: {
@@ -80,7 +79,7 @@ Item {
             text: qsTr('Neutral color')
             Layout.alignment: Qt.AlignRight
         }
-        ColorPicker {
+        Shotcut.ColorPicker {
             id: colorPicker
             property bool isReady: false
             Component.onCompleted: isReady = true
@@ -95,7 +94,7 @@ Item {
             }
             onPickCancelled: filter.set('disable', 0)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: colorPicker.value = defaultNeutral
         }
 
@@ -108,34 +107,33 @@ Item {
             Slider {
                 id: tempslider
                 Layout.fillWidth: true
-                Layout.maximumHeight: tempspinner.height
-                style: SliderStyle {
-                    groove: Rectangle {
-                        rotation: -90
-                        height: parent.width
-                        x: (parent.width - width) / 2
-                        gradient: Gradient {
-                            GradientStop { position: 0.000; color: "#FFC500" }
-                            GradientStop { position: 0.392; color: "#FFFFFF" }
-                            GradientStop { position: 1.000; color: "#DDFFFE" }
-                        }
-                        radius: 4
-                        onWidthChanged: {
-                            // Force width (which is really height due to rotation).
-                            width = tempslider.height / 2
-                        }
+                implicitHeight: tempspinner.implicitHeight
+                padding: 0
+                background: Rectangle {
+                    height: tempslider.availableHeight / 2
+                    width: tempslider.availableWidth
+                    x: tempslider.leftPadding
+                    y: tempslider.topPadding + tempslider.availableHeight / 2 - height / 2
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.000; color: "#FFC500" }
+                        GradientStop { position: 0.392; color: "#FFFFFF" }
+                        GradientStop { position: 1.000; color: "#DDFFFE" }
                     }
-                    handle: Rectangle {
-                        color: "lightgray"
-                        border.color: "gray"
-                        border.width: 2
-                        width: height / 2
-                        height: tempslider.height
-                        radius: 4
-                    }
+                    radius: 4
                 }
-                minimumValue: 1000.0
-                maximumValue: 15000.0
+                handle: Rectangle {
+                    x: tempslider.leftPadding + tempslider.visualPosition * (tempslider.availableWidth - width)
+                    y: tempslider.topPadding + tempslider.availableHeight / 2 - height / 2
+                    color: "lightgray"
+                    border.color: "gray"
+                    border.width: 2
+                    width: height / 2
+                    height: tempslider.height
+                    radius: 4
+                }
+                from: 1000.0
+                to: 15000.0
                 property bool isReady: false
                 Component.onCompleted: isReady = true
                 onValueChanged: {
@@ -145,18 +143,18 @@ Item {
                     }
                 }
             }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: tempspinner
-                Layout.minimumWidth: 100
-                minimumValue: 1000.0
-                maximumValue: 15000.0
-                decimals: 0
+                Layout.minimumWidth: 150
+                from: 1000.0
+                to: 15000.0
                 stepSize: 10
-                suffix: qsTr(' deg', 'degrees')
+                decimals: 0
+                suffix: qsTr('degrees')
                 onValueChanged: tempslider.value = value
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: tempslider.value = defaultTemp
         }
 

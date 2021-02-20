@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020 Meltytech, LLC
+ * Copyright (c) 2012-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -339,6 +339,16 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const
                         rect.setTop(THUMBNAIL_HEIGHT);
                     }
                     painter.drawImage(rect, *thumb);
+                }
+                if (parent.is_valid() && parent.get_int(kPlaylistIndexProperty) == index.row() + 1) {
+                    QPen pen(Qt::red);
+                    pen.setWidthF(1.5 * MAIN.devicePixelRatioF());
+                    painter.setPen(pen);
+                    rect.setX(0);
+                    rect.setY(0);
+                    rect.setWidth(rect.width() - 1);
+                    rect.setHeight(rect.height() - 1);
+                    painter.drawRect(rect);
                 }
                 painter.end();
             }

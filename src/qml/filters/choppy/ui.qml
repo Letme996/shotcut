@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Meltytech, LLC
+ * Copyright (c) 2020-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,12 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.1
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
-KeyframableFilter {
+Shotcut.KeyframableFilter {
     property string amount: 'amount'
     property int amountDefault: 5
 
@@ -43,6 +43,7 @@ KeyframableFilter {
     function setControls() {
         blockUpdate = true
         amountSlider.value = filter.getDouble(amount, getPosition())
+        amountKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(amount) > 0
         blockUpdate = false
         enableControls(isSimpleKeyframesActive())
     }
@@ -65,7 +66,7 @@ KeyframableFilter {
             Layout.alignment: Qt.AlignRight
         }
 
-        Preset {
+        Shotcut.Preset {
             id: preset
             Layout.columnSpan: parent.columns - 1
             parameters: [amount]
@@ -82,7 +83,7 @@ KeyframableFilter {
             text: qsTr('Repeat')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: amountSlider
             minimumValue: 0
             maximumValue: Math.round(profile.fps)
@@ -91,12 +92,11 @@ KeyframableFilter {
             spinnerWidth: 110
             onValueChanged: updateFilter(amount, amountSlider.value, amountKeyframesButton, getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: amountSlider.value = amountDefault
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: amountKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(amount) > 0
             onToggled: {
                 enableControls(true)
                 toggleKeyframes(checked, amount, amountSlider.value)

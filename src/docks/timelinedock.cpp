@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2020 Meltytech, LLC
+ * Copyright (c) 2013-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,9 +35,8 @@
 #include <QtQuick>
 #include <Logger.h>
 
-static QString kNonSeekableWarning = QObject::tr("You cannot add a non-seekable source.");
-static auto kFileUrlProtocol = QStringLiteral("file://");
-static auto kFilesUrlDelimiter = QStringLiteral(",file://");
+static const char* kFileUrlProtocol = "file://";
+static const char* kFilesUrlDelimiter = ",file://";
 
 TimelineDock::TimelineDock(QWidget *parent) :
     QDockWidget(parent),
@@ -74,8 +73,9 @@ TimelineDock::TimelineDock(QWidget *parent) :
 #endif
 
     connect(&m_model, SIGNAL(modified()), this, SLOT(clearSelectionIfInvalid()));
-    connect(&m_model, &MultitrackModel::inserted, this, &TimelineDock::onInserted, Qt::QueuedConnection);
-    connect(&m_model, &MultitrackModel::overWritten, this, &TimelineDock::onOverWritten, Qt::QueuedConnection);
+    connect(&m_model, &MultitrackModel::appended, this, &TimelineDock::selectClip, Qt::QueuedConnection);
+    connect(&m_model, &MultitrackModel::inserted, this, &TimelineDock::selectClip, Qt::QueuedConnection);
+    connect(&m_model, &MultitrackModel::overWritten, this, &TimelineDock::selectClip, Qt::QueuedConnection);
     connect(&m_model, SIGNAL(rowsInserted(QModelIndex,int,int)), SLOT(onRowsInserted(QModelIndex,int,int)));
     connect(&m_model, SIGNAL(rowsRemoved(QModelIndex,int,int)), SLOT(onRowsRemoved(QModelIndex,int,int)));
 
@@ -165,6 +165,11 @@ void TimelineDock::pulseLockButtonOnTrack(int trackIndex)
     QMetaObject::invokeMethod(m_quickView.rootObject(), "pulseLockButtonOnTrack",
             Qt::DirectConnection, Q_ARG(QVariant, trackIndex));
     emit showStatusMessage(tr("This track is locked"));
+}
+
+void TimelineDock::emitNonSeekableWarning()
+{
+    emit showStatusMessage(tr("You cannot add a non-seekable source."));
 }
 
 void TimelineDock::chooseClipAtPosition(int position, int& trackIndex, int& clipIndex)
@@ -276,14 +281,14 @@ QVariantList TimelineDock::selectionForJS() const
     return result;
 }
 
-QList<QPoint> TimelineDock::selection() const
+const QList<QPoint> TimelineDock::selection() const
 {
     if (!m_quickView.rootObject())
         return QList<QPoint>();
     return m_selection.selectedClips;
 }
 
-QVector<QUuid> TimelineDock::selectionUuids()
+const QVector<QUuid> TimelineDock::selectionUuids()
 {
     QVector<QUuid> result;
     for (const auto& clip : selection()) {
@@ -552,9 +557,8 @@ void TimelineDock::append(int trackIndex)
         ProxyManager::generateIfNotExists(producer);
         MAIN.undoStack()->push(
             new Timeline::AppendCommand(m_model, trackIndex, MLT.XML(&producer)));
-        selectClipUnderPlayhead();
     } else if (!MLT.isSeekableClip()) {
-        emit showStatusMessage(kNonSeekableWarning);
+        emitNonSeekableWarning();
     }
 }
 
@@ -636,7 +640,6 @@ void TimelineDock::liftSelection()
     if (selection().isEmpty())
         return;
     int n = selection().size();
-    QVector<QUuid> uuids;
     if (n > 1)
         MAIN.undoStack()->beginMacro(tr("Lift %1 from timeline").arg(n));
     int trackIndex, clipIndex;
@@ -823,6 +826,9 @@ void TimelineDock::detachAudio(int trackIndex, int clipIndex)
     QScopedPointer<Mlt::ClipInfo> info(getClipInfo(trackIndex, clipIndex));
     if (info && info->producer && info->producer->is_valid() && !info->producer->is_blank()
              && info->producer->get("audio_index") && info->producer->get_int("audio_index") >= 0) {
+        if (!info->producer->property_exists(kDefaultAudioIndexProperty)) {
+            info->producer->set(kDefaultAudioIndexProperty, info->producer->get_int("audio_index"));
+        }
         Mlt::Producer clip(MLT.profile(), "xml-string", MLT.XML(info->producer).toUtf8().constData());
         clip.set_in_and_out(info->frame_in, info->frame_out);
         MAIN.undoStack()->push(
@@ -857,7 +863,7 @@ void TimelineDock::onProducerModified()
 void TimelineDock::replace(int trackIndex, int clipIndex, const QString& xml)
 {
     if (xml.isEmpty() && !MLT.isClip() && !MLT.savedProducer()) {
-        showStatusMessage(tr("There is nothing in the Source player."));
+        emit showStatusMessage(tr("There is nothing in the Source player."));
         return;
     }
     if (!m_model.trackList().count() || MAIN.isSourceClipMyProject())
@@ -872,7 +878,7 @@ void TimelineDock::replace(int trackIndex, int clipIndex, const QString& xml)
         clipIndex = clipIndexAtPlayhead(trackIndex);
     Mlt::Producer producer(producerForClip(trackIndex, clipIndex));
     if (producer.is_valid() && producer.type() == tractor_type) {
-        showStatusMessage(tr("You cannot replace a transition."));
+        emit showStatusMessage(tr("You cannot replace a transition."));
         return;
     }
     if (MLT.isSeekableClip() || MLT.savedProducer() || !xml.isEmpty()) {
@@ -882,7 +888,7 @@ void TimelineDock::replace(int trackIndex, int clipIndex, const QString& xml)
         MAIN.undoStack()->push(
             new Timeline::ReplaceCommand(m_model, trackIndex, clipIndex, xmlToUse));
     } else if (!MLT.isSeekableClip()) {
-        emit showStatusMessage(kNonSeekableWarning);
+        emitNonSeekableWarning();
     }
 }
 
@@ -998,7 +1004,7 @@ void TimelineDock::onClipMoved(int fromTrack, int toTrack, int clipIndex, int po
 bool TimelineDock::trimClipIn(int trackIndex, int clipIndex, int oldClipIndex, int delta, bool ripple)
 {
     if (!ripple && m_model.addTransitionByTrimInValid(trackIndex, clipIndex, delta)) {
-        m_model.addTransitionByTrimIn(trackIndex, clipIndex, delta);
+        clipIndex = m_model.addTransitionByTrimIn(trackIndex, clipIndex, delta);
         m_transitionDelta += delta;
         m_trimCommand.reset(new Timeline::AddTransitionByTrimInCommand(m_model, trackIndex, clipIndex - 1, m_transitionDelta, m_trimDelta, false));
         if (m_updateCommand && m_updateCommand->trackIndex() == trackIndex && m_updateCommand->clipIndex() == clipIndex)
@@ -1023,7 +1029,11 @@ bool TimelineDock::trimClipIn(int trackIndex, int clipIndex, int oldClipIndex, i
     else if (m_model.trimClipInValid(trackIndex, clipIndex, delta, ripple)) {
         if (!m_undoHelper) {
             m_undoHelper.reset(new UndoHelper(m_model));
-            if (ripple) m_undoHelper->setHints(UndoHelper::SkipXML);
+            if (ripple) {
+                m_undoHelper->setHints(UndoHelper::SkipXML);
+            } else {
+                m_undoHelper->setHints(UndoHelper::RestoreTracks);
+            }
             m_undoHelper->recordBeforeState();
         }
         clipIndex = m_model.trimClipIn(trackIndex, clipIndex, delta, ripple, Settings.timelineRippleAllTracks());
@@ -1097,7 +1107,8 @@ static QString convertUrlsToXML(const QString& xml)
         LongUiTask longTask(QObject::tr("Drop Files"));
         Mlt::Playlist playlist(MLT.profile());
         QList<QUrl> urls;
-        for (auto s : xml.split(kFilesUrlDelimiter)) {
+        const auto& strings = xml.split(kFilesUrlDelimiter);
+        for (auto s : strings) {
 #ifdef Q_OS_WIN
             if (!s.startsWith(kFileUrlProtocol)) {
                 s.prepend(kFileUrlProtocol);
@@ -1151,7 +1162,7 @@ void TimelineDock::insert(int trackIndex, int position, const QString &xml, bool
         pulseLockButtonOnTrack(trackIndex);
         return;
     }
-    if (MAIN.isSourceClipMyProject()) return;
+    if (xml.contains(MAIN.fileName()) && MAIN.isSourceClipMyProject()) return;
 
     // Handle drop from file manager to empty project.
     if ((!MLT.producer() || !MLT.producer()->is_valid()) && xml.startsWith(kFileUrlProtocol)) {
@@ -1181,13 +1192,12 @@ void TimelineDock::insert(int trackIndex, int position, const QString &xml, bool
         MAIN.undoStack()->push(
             new Timeline::InsertCommand(m_model, trackIndex, position, xmlToUse, seek));
     } else if (!MLT.isSeekableClip()) {
-        emit showStatusMessage(kNonSeekableWarning);
+        emitNonSeekableWarning();
     }
 }
 
-void TimelineDock::onInserted(int trackIndex, int clipIndex)
+void TimelineDock::selectClip(int trackIndex, int clipIndex)
 {
-    Q_UNUSED(trackIndex)
     setSelection(QList<QPoint>() << QPoint(clipIndex, trackIndex));
 }
 
@@ -1200,7 +1210,7 @@ void TimelineDock::overwrite(int trackIndex, int position, const QString &xml, b
         pulseLockButtonOnTrack(trackIndex);
         return;
     }
-    if (MAIN.isSourceClipMyProject()) return;
+    if (xml.contains(MAIN.fileName()) && MAIN.isSourceClipMyProject()) return;
 
     // Handle drop from file manager to empty project.
     if ((!MLT.producer() || !MLT.producer()->is_valid()) && xml.startsWith(kFileUrlProtocol)) {
@@ -1230,14 +1240,8 @@ void TimelineDock::overwrite(int trackIndex, int position, const QString &xml, b
         MAIN.undoStack()->push(
             new Timeline::OverwriteCommand(m_model, trackIndex, position, xmlToUse, seek));
     } else if (!MLT.isSeekableClip()) {
-        emit showStatusMessage(kNonSeekableWarning);
+        emitNonSeekableWarning();
     }
-}
-
-void TimelineDock::onOverWritten(int trackIndex, int clipIndex)
-{
-    Q_UNUSED(trackIndex)
-    setSelection(QList<QPoint>() << QPoint(clipIndex, trackIndex));
 }
 
 void TimelineDock::appendFromPlaylist(Mlt::Playlist *playlist, bool skipProxy)
@@ -1257,7 +1261,6 @@ void TimelineDock::appendFromPlaylist(Mlt::Playlist *playlist, bool skipProxy)
     }
     MAIN.undoStack()->push(
         new Timeline::AppendCommand(m_model, trackIndex, MLT.XML(playlist), skipProxy));
-    selectClipUnderPlayhead();
 }
 
 void TimelineDock::splitClip(int trackIndex, int clipIndex)
@@ -1509,7 +1512,7 @@ void TimelineDock::replaceClipsWithHash(const QString& hash, Mlt::Producer& prod
                 info->producer->set(kOriginalResourceProperty, producer.get("resource"));
                 auto caption = Util::baseName(ProxyManager::resource(*info->producer));
                 if (!::qstrcmp(info->producer->get("mlt_service"), "timewarp")) {
-                    caption = QString("%1 (%2x)").arg(caption).arg(info->producer->get("warp_speed"));
+                    caption = QString("%1 (%2x)").arg(caption, info->producer->get("warp_speed"));
                 }
                 info->producer->set(kShotcutCaptionProperty, caption.toUtf8().constData());
             } else {

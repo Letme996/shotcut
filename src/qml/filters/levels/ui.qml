@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Meltytech, LLC
+ * Copyright (c) 2018-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,11 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.1
-import QtQuick.Controls 1.0
-import QtQuick.Controls 2.12 as Controls2
-import QtQuick.Layouts 1.0
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     width: 350
@@ -80,8 +79,11 @@ Item {
         var position = getPosition()
         blockUpdate = true
         inputBlackSlider.value = filter.getDouble(inputBlackParam, position) * inputBlackSlider.maximumValue
+        inputBlackKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(inputBlackParam) > 0
         inputWhiteSlider.value = filter.getDouble(inputWhiteParam, position) * inputWhiteSlider.maximumValue
+        inputWhiteKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(inputWhiteParam) > 0
         gammaSlider.value = filter.getDouble(gammaParam, position) * gammaSlider.maximumValue
+        gammaKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(gammaParam) > 0
         blockUpdate = false
         inputBlackSlider.enabled = inputWhiteSlider.enabled = gammaSlider.enabled
             = position <= 0 || (position >= (filter.animateIn - 1) && position <= (filter.duration - filter.animateOut)) || position >= (filter.duration - 1)
@@ -156,7 +158,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             Layout.columnSpan: parent.columns - 1
             parameters: [channelParam, inputBlackParam, inputWhiteParam, gammaParam, outputBlackParam, outputWhiteParam]
@@ -175,12 +177,12 @@ Item {
             text: qsTr('Channel')
             Layout.alignment: Qt.AlignRight
         }
-        Controls2.ComboBox {
+        Shotcut.ComboBox {
             id: channelCombo
             model: [qsTr('Red'), qsTr('Green'), qsTr('Blue'), qsTr('Value')]
             onActivated: filter.set(channelParam, currentIndex / 10)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filter.set(channelParam, 3 / 10)
                 channelCombo.currentIndex = 3
@@ -192,7 +194,7 @@ Item {
             text: qsTr('Histogram')
             Layout.alignment: Qt.AlignRight
         }
-        Controls2.ComboBox {
+        Shotcut.ComboBox {
             id: histogramCombo
             model: [qsTr('Top Left'), qsTr('Top Right'), qsTr('Bottom Left'), qsTr('Bottom Right'), qsTr('None')]
             onActivated: {
@@ -202,7 +204,7 @@ Item {
                     filter.set(histogramPositionParam, currentIndex / 10)
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filter.set(showHistogramParam, 0)
                 filter.set('threads', 0)
@@ -215,19 +217,18 @@ Item {
             text: qsTr('Input Black')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: inputBlackSlider
             minimumValue: 0
             maximumValue: 255
             decimals: 1
             onValueChanged: updateFilter(inputBlackParam, value / maximumValue, getPosition(), inputBlackKeyframesButton)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: inputBlackSlider.value = 0
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: inputBlackKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(inputBlackParam) > 0
             onToggled: onKeyframesButtonClicked(checked, inputBlackParam, inputBlackSlider.value / inputBlackSlider.maximumValue)
         }
 
@@ -235,19 +236,18 @@ Item {
             text: qsTr('Input White')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: inputWhiteSlider
             minimumValue: 0
             maximumValue: 255
             decimals: 1
             onValueChanged: updateFilter(inputWhiteParam, value / maximumValue, getPosition(), inputWhiteKeyframesButton)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: inputWhiteSlider.value = 255
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: inputWhiteKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(inputWhiteParam) > 0
             onToggled: onKeyframesButtonClicked(checked, inputWhiteParam, inputWhiteSlider.value / inputWhiteSlider.maximumValue)
         }
 
@@ -255,19 +255,18 @@ Item {
             text: qsTr('Gamma')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: gammaSlider
             minimumValue: 0.01
             maximumValue: 4
             decimals: 2
             onValueChanged: updateFilter(gammaParam, value / maximumValue, getPosition(), gammaKeyframesButton)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: gammaSlider.value = 1
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: gammaKeyframesButton
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(gammaParam) > 0
             onToggled: onKeyframesButtonClicked(checked, gammaParam, gammaSlider.value / gammaSlider.maximumValue)
         }
 
@@ -275,13 +274,13 @@ Item {
             text: qsTr('Output Black')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: outputBlackSlider
             minimumValue: 0
             maximumValue: 255
             onValueChanged: filter.set(outputBlackParam, value / maximumValue)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: outputBlackSlider.value = 0
         }
         Item { width: 1 }
@@ -290,13 +289,13 @@ Item {
             text: qsTr('Output White')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: outputWhiteSlider
             minimumValue: 0
             maximumValue: 255
             onValueChanged: filter.set(outputWhiteParam, value / maximumValue)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: outputWhiteSlider.value = 255
         }
         Item { width: 1 }

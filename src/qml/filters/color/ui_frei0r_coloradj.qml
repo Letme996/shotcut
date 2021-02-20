@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 Meltytech, LLC
+ * Copyright (c) 2014-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,11 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.1
-import QtQuick.Controls 1.1
-import QtQuick.Controls 2.12 as Controls2
-import QtQuick.Layouts 1.0
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     property string paramRed: '0'
@@ -48,7 +47,7 @@ Item {
         anchors.fill: parent
         anchors.margins: 8
 
-        Preset {
+        Shotcut.Preset {
             parameters: defaultParameters
             onPresetSelected: {
                 modeCombo.currentIndex = Math.round(filter.getDouble(paramAction) * 2)
@@ -58,7 +57,7 @@ Item {
 
         RowLayout {
             Label { text: qsTr('Mode') }
-            Controls2.ComboBox {
+            Shotcut.ComboBox {
                 id: modeCombo
                 Layout.minimumWidth: 200
                 model: [qsTr('Shadows (Lift)'), qsTr('Midtones (Gamma)'), qsTr('Highlights (Gain)')]
@@ -66,7 +65,7 @@ Item {
             }
         }
 
-        ColorWheelItem {
+        Shotcut.ColorWheelItem {
             id: wheel
             Layout.columnSpan: 2
             implicitWidth: (Math.min(parent.width, parent.height) - 60) * 1.1

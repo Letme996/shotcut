@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Meltytech, LLC
+ * Copyright (c) 2018-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     property string rectProperty: "rect"
@@ -80,7 +80,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             parameters: defaultParameters
             Layout.columnSpan: 4
@@ -95,7 +95,7 @@ Item {
             text: qsTr('Waveform Color')
             Layout.alignment: Qt.AlignRight
         }
-        GradientControl {
+        Shotcut.GradientControl {
             Layout.columnSpan: 4
             id: fgGradient
             onGradientChanged: {
@@ -108,7 +108,7 @@ Item {
             text: qsTr('Background Color')
             Layout.alignment: Qt.AlignRight
         }
-        ColorPicker {
+        Shotcut.ColorPicker {
             Layout.columnSpan: 4
             id: bgColor
             eyedropper: true
@@ -120,7 +120,7 @@ Item {
             text: qsTr('Thickness')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             Layout.columnSpan: 3
             id: thicknessSlider
             minimumValue: 0
@@ -129,7 +129,7 @@ Item {
             suffix: ' px'
             onValueChanged: filter.set("thickness", value)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: thicknessSlider.value = 1
         }
 
@@ -143,6 +143,7 @@ Item {
                 id: rectX
                 text: filterRect.x
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: setFilter()
             }
             Label { text: ',' }
@@ -150,6 +151,7 @@ Item {
                 id: rectY
                 text: filterRect.y
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: setFilter()
             }
         }
@@ -164,6 +166,7 @@ Item {
                 id: rectW
                 text: filterRect.width
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: setFilter()
             }
             Label { text: 'x' }
@@ -171,6 +174,7 @@ Item {
                 id: rectH
                 text: filterRect.height
                 horizontalAlignment: Qt.AlignRight
+                selectByMouse: true
                 onEditingFinished: setFilter()
             }
         }
@@ -201,7 +205,7 @@ Item {
             text: qsTr('Window')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             Layout.columnSpan: 3
             id: windowSlider
             minimumValue: 0
@@ -210,7 +214,7 @@ Item {
             decimals: 0
             onValueChanged: filter.set("window", value)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: windowSlider.value = 0.4
         }
 

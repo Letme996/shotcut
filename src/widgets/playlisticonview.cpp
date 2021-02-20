@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020 Meltytech, LLC
+ * Copyright (c) 2016-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -242,11 +242,13 @@ void PlaylistIconView::paintEvent(QPaintEvent*)
 
 void PlaylistIconView::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (m_draggingOverPos.isNull() && m_pendingSelect.isValid()) {
-        selectionModel()->select(m_pendingSelect, QItemSelectionModel::ClearAndSelect);
-        viewport()->update();
+    if (event->button() == Qt::LeftButton) {
+        if (m_draggingOverPos.isNull() && m_pendingSelect.isValid()) {
+            selectionModel()->select(m_pendingSelect, QItemSelectionModel::ClearAndSelect);
+            viewport()->update();
+        }
+        m_pendingSelect = QModelIndex();
     }
-    m_pendingSelect = QModelIndex();
     QAbstractItemView::mouseReleaseEvent(event);
 }
 
@@ -309,8 +311,7 @@ void PlaylistIconView::keyReleaseEvent(QKeyEvent *event)
 {
     QAbstractItemView::keyPressEvent(event);
     event->ignore();
-    m_isToggleSelect = false;
-    m_isRangeSelect = false;
+    resetMultiSelect();
 }
 
 QAbstractItemView::DropIndicatorPosition PlaylistIconView::position(const QPoint &pos, const QRect &rect, const QModelIndex &index) const
@@ -350,4 +351,10 @@ void PlaylistIconView::updateSizes()
 
     verticalScrollBar()->setRange(0, m_gridSize.height() * model()->rowCount() / m_itemsPerRow - height() + m_gridSize.height());
     viewport()->update();
+}
+
+void PlaylistIconView::resetMultiSelect()
+{
+    m_isToggleSelect = false;
+    m_isRangeSelect = false;
 }

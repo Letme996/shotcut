@@ -80,6 +80,8 @@ DAV1D_HEAD=1
 DAV1D_REVISION=
 AOM_HEAD=1
 AOM_REVISION=
+QT_VERSION_DEFAULT=5.15.2
+QT_VERSION_DARWIN=5.12.10
 
 # QT_INCLUDE_DIR="$(pkg-config --variable=prefix QtCore)/include"
 QT_INCLUDE_DIR=${QTDIR:+${QTDIR}/include}
@@ -600,16 +602,16 @@ function set_globals {
     if test "$TARGET_OS" = "Win32" ; then
       export HOST=i686-w64-mingw32
       export CROSS=${HOST}.shared-
-      export QTDIR="$HOME/qt-5.15.2-x86-mingw540-sjlj"
-      export QMAKE="$HOME/Qt/5.15.2/gcc_64/bin/qmake"
-      export LRELEASE="$HOME/Qt/5.15.2/gcc_64/bin/lrelease"
+      export QTDIR="$HOME/qt-$QT_VERSION_DEFAULT-x86-mingw540-sjlj"
+      export QMAKE="$HOME/Qt/$QT_VERSION_DEFAULT/gcc_64/bin/qmake"
+      export LRELEASE="$HOME/Qt/$QT_VERSION_DEFAULT/gcc_64/bin/lrelease"
       export LDFLAGS="-L/opt/mxe/usr/${HOST}.shared/lib -Wl,--large-address-aware $LDFLAGS"
     else
       export HOST=x86_64-w64-mingw32
       export CROSS=${HOST}.shared-
-      export QTDIR="$HOME/qt-5.15.2-x64-mingw540-seh"
-      export QMAKE="$HOME/Qt/5.15.2/gcc_64/bin/qmake"
-      export LRELEASE="$HOME/Qt/5.15.2/gcc_64/bin/lrelease"
+      export QTDIR="$HOME/qt-$QT_VERSION_DEFAULT-x64-mingw540-seh"
+      export QMAKE="$HOME/Qt/$QT_VERSION_DEFAULT/gcc_64/bin/qmake"
+      export LRELEASE="$HOME/Qt/$QT_VERSION_DEFAULT/gcc_64/bin/lrelease"
       export LDFLAGS="-L/opt/mxe/usr/${HOST}.shared/lib $LDFLAGS"
     fi
     export CFLAGS="-I/opt/mxe/usr/${HOST}.shared/include $CFLAGS"
@@ -624,14 +626,14 @@ function set_globals {
     export CMAKE_ROOT="${SOURCE_DIR}/vid.stab/cmake"
     export PKG_CONFIG=pkg-config
   elif test "$TARGET_OS" = "Darwin"; then
-    export QTDIR="$HOME/Qt/5.12.10/clang_64"
+    export QTDIR="$HOME/Qt/$QT_VERSION_DARWIN/clang_64"
     export RANLIB=ranlib
   else
     if test -z "$QTDIR" ; then
       if [ "$(uname -m)" = "x86_64" ]; then
-        export QTDIR="$HOME/Qt/5.15.2/gcc_64"
+        export QTDIR="$HOME/Qt/$QT_VERSION_DEFAULT/gcc_64"
       else
-        export QTDIR="$HOME/Qt/5.15.2/gcc"
+        export QTDIR="$HOME/Qt/$QT_VERSION_DEFAULT/gcc"
       fi
     fi
     export RANLIB=ranlib
@@ -780,12 +782,12 @@ function set_globals {
   #####
   # shotcut
   if [ "$TARGET_OS" = "Darwin" ]; then
-    CONFIG[7]="$QTDIR/bin/qmake -r MLT_PREFIX=$FINAL_INSTALL_DIR $QMAKE_DEBUG_FLAG $QMAKE_ASAN_FLAGS"
+    CONFIG[7]="$QTDIR/bin/qmake -r MLT_PREFIX=$FINAL_INSTALL_DIR SHOTCUT_VERSION=$SHOTCUT_VERSION $QMAKE_DEBUG_FLAG $QMAKE_ASAN_FLAGS"
   elif [ "$TARGET_OS" = "Win32" -o "$TARGET_OS" = "Win64" ]; then
     # DEFINES+=QT_STATIC is for QWebSockets
     CONFIG[7]="$QMAKE -r -spec mkspecs/mingw CONFIG+=link_pkgconfig PKGCONFIG+=mlt++ LIBS+=-L${QTDIR}/lib SHOTCUT_VERSION=$SHOTCUT_VERSION DEFINES+=QT_STATIC QMAKE_CXXFLAGS+=-std=c++11 $QMAKE_DEBUG_FLAG $QMAKE_ASAN_FLAGS"
   else
-    CONFIG[7]="$QTDIR/bin/qmake -r PREFIX=$FINAL_INSTALL_DIR $QMAKE_DEBUG_FLAG $QMAKE_ASAN_FLAGS"
+    CONFIG[7]="$QTDIR/bin/qmake -r PREFIX=$FINAL_INSTALL_DIR SHOTCUT_VERSION=$SHOTCUT_VERSION $QMAKE_DEBUG_FLAG $QMAKE_ASAN_FLAGS"
     LD_LIBRARY_PATH_[7]="/usr/local/lib"
   fi
   CFLAGS_[7]=$CFLAGS
@@ -1497,7 +1499,7 @@ function configure_compile_install_subproject {
 
   # Special hack for shotcut
   if test "shotcut" = "$1" -a \( "$TARGET_OS" = "Win32" -o "$TARGET_OS" = "Win64" \) ; then
-    sed 's/QMAKE_LIBS_OPENGL = -lGL//' -i /root/Qt/5.15.2/gcc_64/mkspecs/modules/qt_lib_gui_private.pri
+    sed 's/QMAKE_LIBS_OPENGL = -lGL//' -i /root/Qt/$QT_VERSION_DEFAULT/gcc_64/mkspecs/modules/qt_lib_gui_private.pri
   fi
 
   # Special hack for movit
@@ -1948,7 +1950,6 @@ function deploy_osx
   elif [ -d "/Applications/Qt Creator.app/Contents/Imports/qtquick2" ]; then
     cmd cp -a "/Applications/Qt Creator.app/Contents/Imports/qtquick2" Resources/qml
   fi
-#  cmd curl -o Resources/qml/QtQuick/Controls.2/Fusion/ComboBox.qml "https://s3.amazonaws.com/misc.meltymedia/shotcut-build/ComboBox-qt5.12.10.qml"
   for lib in $(find Resources -name '*.dylib'); do
     fixlibs "$lib"
   done

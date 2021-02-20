@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Meltytech, LLC
+ * Copyright (c) 2020-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,13 @@
  */
 
 import QtQuick 2.12
-import QtQuick.Controls 1.4 as Controls1
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.0
 import QtQuick.Dialogs 1.2
-import Shotcut.Controls 1.0
+import Shotcut.Controls 1.0 as Shotcut
 import org.shotcut.qml 1.0
 
-VuiBase {
+Shotcut.VuiBase {
     id: vui
     property string rectProperty: 'geometry'
     property string halignProperty: 'valign'
@@ -37,6 +36,7 @@ VuiBase {
     property string endValue:  '_shotcut:endValue'
     property string sizeProperty: '_shotcut:size'
     property bool smallIcons: settings.smallIcons || toolbar.maxWidth >= videoItem.width
+    property int smallIconSize: 22
     property url settingsSavePath: 'file:///' + settings.savePath
 
     Component.onCompleted: {
@@ -156,151 +156,156 @@ VuiBase {
                 y: filterRect.y * scale
                 width: filterRect.width * rectangle.widthScale / scale
                 padding: 0
+                ScrollBar.vertical.width: 16 / scale
+                ScrollBar.vertical.x: width - ScrollBar.vertical.width - rectangle.handleSize
 
-            TextArea {
-                id: textArea
-                padding: 0
-                textFormat: Qt.RichText
-                selectByMouse: true
-                persistentSelection: true
-                wrapMode: TextArea.Wrap
-                cursorDelegate: Rectangle {
-                    id: cursor
-                    visible: textArea.cursorVisible
-                    width: 2.5/scale
-                    color: 'white'
-                    SequentialAnimation {
-                        running: cursor.visible
-                        loops: Animation.Infinite
-                        NumberAnimation {
-                            target: cursor
-                            property: 'opacity'
-                            from: 0
-                            to: 1
-                            duration: 100
+                TextArea {
+                    id: textArea
+                    padding: 0
+                    textFormat: Qt.RichText
+                    selectByMouse: true
+                    persistentSelection: true
+                    wrapMode: TextArea.Wrap
+                    cursorDelegate: Rectangle {
+                        id: cursor
+                        visible: textArea.cursorVisible
+                        width: 2.5/scale
+                        color: 'white'
+                        SequentialAnimation {
+                            running: cursor.visible
+                            loops: Animation.Infinite
+                            NumberAnimation {
+                                target: cursor
+                                property: 'opacity'
+                                from: 0
+                                to: 1
+                                duration: 100
+                            }
+                            PauseAnimation { duration: 400 }
+                            NumberAnimation {
+                                target: cursor
+                                property: 'opacity'
+                                from: 1
+                                to: 0
+                                duration: 100
+                            }
+                            PauseAnimation { duration: 400 }
                         }
-                        PauseAnimation { duration: 400 }
-                        NumberAnimation {
-                            target: cursor
-                            property: 'opacity'
-                            from: 1
-                            to: 0
-                            duration: 100
-                        }
-                        PauseAnimation { duration: 400 }
                     }
-                }
-                baseUrl: 'qrc:/'
-                MouseArea {
-                    acceptedButtons: Qt.RightButton
-                    anchors.fill: parent
-                    onClicked: contextMenu.popup()
-                }
-                text: '__empty__'
-                Component.onCompleted: forceActiveFocus()
-                onTextChanged: {
-                    if (text.indexOf('__empty__') > -1) return
-                    filter.set('html', text)
-                }
-                onContentWidthChanged: updateTextSize()
-                onContentHeightChanged: updateTextSize()
-                Keys.onPressed: {
-                    if (event.key === Qt.Key_V && (event.modifiers & Qt.ShiftModifier) &&
-                        (event.modifiers & Qt.ControlModifier || event.modifiers & Qt.MetaModifier)) {
-                        event.accepted = true
-                        document.pastePlain()
+                    baseUrl: 'qrc:/'
+                    MouseArea {
+                        acceptedButtons: Qt.RightButton
+                        anchors.fill: parent
+                        onClicked: contextMenu.popup()
+                    }
+                    text: '__empty__'
+                    Component.onCompleted: forceActiveFocus()
+                    onTextChanged: {
+                        if (text.indexOf('__empty__') > -1) return
+                        filter.set('html', text)
+                    }
+                    onContentWidthChanged: updateTextSize()
+                    onContentHeightChanged: updateTextSize()
+                    Keys.onPressed: {
+                        if (event.key === Qt.Key_V && (event.modifiers & Qt.ShiftModifier) &&
+                            (event.modifiers & Qt.ControlModifier || event.modifiers & Qt.MetaModifier)) {
+                            event.accepted = true
+                            document.pastePlain()
+                        }
                     }
                 }
             }
-            }
 
-            Controls1.ToolBar {
+            ToolBar {
                 id: toolbar
                 property bool expanded: filter.get('_shotcut:toolbarCollapsed') !== '1'
-                property real maxWidth: 555
+                property real maxWidth: 500
                 x: Math.min((parent.width + parent.x - width), Math.max((-parent.x * scale), scrollView.x + rectangle.handleSize))
                 y: Math.min((parent.height + parent.y - height), Math.max((-parent.y * scale), (scrollView.mapToItem(vui, 0, 0).y > height)? (scrollView.y - height*scale) : (scrollView.y + rectangle.handleSize)))
-                width: expanded? (smallIcons? 380 : maxWidth) : (hiddenButton.width + (smallIcons? 0 : 8))
                 Behavior on width {
                     NumberAnimation{ duration: 100 }
                 }
-                height: expanded? (smallIcons? (hiddenButton.height - 4) : (hiddenButton.height + 4)) : (smallIcons? hiddenButton.height - 8 : hiddenButton.height)
                 anchors.margins: 0
                 opacity: 0.7
                 transformOrigin: Item.TopLeft
                 scale: 1/zoom
 
                 RowLayout {
-                    Controls1.ToolButton {
+                    ToolButton {
                         id: hiddenButton
                         visible: false
+                        action: Action {
+                            icon.source: 'qrc:///icons/oxygen/32x32/actions/show-menu.png'
+                        }
                     }
-                    Controls1.ToolButton {
-                        tooltip: qsTr('Menu')
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                    ToolButton {
+                        Shotcut.HoverTip { text: qsTr('Menu') }
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
-                        iconName: 'show-menu'
-                        iconSource: 'qrc:///icons/oxygen/32x32/actions/show-menu.png'
-                        onClicked: menu.popup()
+                        focusPolicy: Qt.NoFocus
+                        action: Action {
+                            icon.name: 'show-menu'
+                            icon.source: 'qrc:///icons/oxygen/32x32/actions/show-menu.png'
+                            onTriggered: menu.popup()
+                        }
                     }
-                    Controls1.ToolButton {
-                        tooltip: qsTr('Bold')
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                    ToolButton {
+                        action: boldAction
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
-                        checkable: true
-                        iconName: 'format-text-bold'
-                        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-text-bold.png'
-                        onClicked: document.bold = !document.bold
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
-                        tooltip: qsTr('Italic')
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                    ToolButton {
+                        action: italicAction
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
-                        checkable: true
-                        iconName: 'format-text-italic'
-                        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-text-italic.png'
-                        onClicked: document.italic = !document.italic
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
-                        tooltip: qsTr('Underline')
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                    ToolButton {
+                        action: underlineAction
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
-                        checkable: true
-                        iconName: 'format-text-underline'
-                        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-text-underline.png'
-                        onClicked: document.underline = !document.underline
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.Button { // separator
+                    Button { // separator
                         enabled: false
                         implicitWidth: 2
                         implicitHeight: smallIcons? 14 : (hiddenButton.implicitHeight - 8)
                         visible: toolbar.expanded
                     }
-                    Controls1.ToolButton {
-                        tooltip: qsTr('Font')
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                    ToolButton {
+                        Shotcut.HoverTip { text: qsTr('Font') }
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
-                        iconName: 'font'
-                        iconSource: 'qrc:///icons/oxygen/32x32/actions/font.png'
-                        onClicked: {
-                            fontDialog.font.family = document.fontFamily
-                            fontDialog.font.pointSize = document.fontSize
-                            fontDialog.open()
+                        focusPolicy: Qt.NoFocus
+                        action: Action {
+                            icon.name: 'font'
+                            icon.source: 'qrc:///icons/oxygen/32x32/actions/font.png'
+                            onTriggered: {
+                                fontDialog.font.family = document.fontFamily
+                                fontDialog.font.pointSize = document.fontSize
+                                fontDialog.open()
+                            }
                         }
                     }
-                    Controls1.SpinBox {
+                    Shotcut.DoubleSpinBox {
                         id: fontSizeSpinBox
-                        ToolTip { text: qsTr('Text size') }
-                        implicitWidth: 50
+                        Shotcut.HoverTip { text: qsTr('Text size') }
+                        implicitWidth: 60
                         visible: toolbar.expanded
                         value: 72
-                        minimumValue: 1
-                        maximumValue: 1000
+                        from: 1
+                        to: 1000
+                        decimals: 0
+                        focusPolicy: Qt.NoFocus
                         property bool blockValue: false
                         onValueChanged: {
                             if (!blockValue) {
@@ -310,12 +315,13 @@ VuiBase {
                             }
                         }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         id: colorButton
-                        tooltip: qsTr('Text color')
+                        Shotcut.HoverTip { text: qsTr('Text color') }
                         implicitWidth: toolbar.height - 4
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
                         property var color : document.textColor
                         Rectangle {
                             id: colorRect
@@ -330,64 +336,79 @@ VuiBase {
                             colorDialog.open()
                         }
                     }
-                    Controls1.Button { // separator
+                    Button { // separator
                         enabled: false
                         implicitWidth: 2
                         implicitHeight: smallIcons? 14 : (hiddenButton.implicitHeight - 8)
                         visible: toolbar.expanded
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: alignLeftAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: alignCenterAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: alignRightAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: alignJustifyAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: decreaseIndentAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         action: increaseIndentAction
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
                         visible: toolbar.expanded
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: parent.action.text }
                     }
-                    Controls1.ToolButton {
+                    ToolButton {
                         id: expandCollapseButton
-                        implicitWidth: smallIcons? 18 : hiddenButton.implicitWidth
+                        implicitWidth: smallIcons? smallIconSize : hiddenButton.implicitWidth
                         implicitHeight: implicitWidth
-                        tooltip: toolbar.expanded? qsTr('Collapse Toolbar') : qsTr('Expand Toolbar')
-                        iconName: toolbar.expanded? 'media-seek-backward' : 'media-seek-forward'
-                        iconSource: toolbar.expanded? 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png' : 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png'
-                        onClicked: {
-                            toolbar.expanded = !toolbar.expanded
-                            filter.set('_shotcut:toolbarCollapsed', !toolbar.expanded)
+                        focusPolicy: Qt.NoFocus
+                        Shotcut.HoverTip { text: toolbar.expanded? qsTr('Collapse Toolbar') : qsTr('Expand Toolbar') }
+                        action: Action {
+                            icon.name: toolbar.expanded? 'media-seek-backward' : 'media-seek-forward'
+                            icon.source: toolbar.expanded? 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png' : 'qrc:///icons/oxygen/32x32/actions/media-seek-backward.png'
+                            onTriggered: {
+                                toolbar.expanded = !toolbar.expanded
+                                filter.set('_shotcut:toolbarCollapsed', !toolbar.expanded)
+                            }
                         }
                     }
                 }
             }
 
-            RectangleControl {
+            Shotcut.RectangleControl {
                 id: rectangle
                 widthScale: video.rect.width / profile.width
                 heightScale: video.rect.height / profile.height
@@ -517,38 +538,38 @@ VuiBase {
         onTriggered: textArea.selectAll()
     }
 
-    Controls1.Action {
+    Action {
         id: alignLeftAction
         text: qsTr('Left')
-        iconName: 'format-justify-left'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-justify-left.png'
+        icon.name: 'format-justify-left'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-left.png'
         onTriggered: document.alignment = Qt.AlignLeft
         checkable: true
         checked: document.alignment == Qt.AlignLeft
     }
-    Controls1.Action {
+    Action {
         id: alignCenterAction
         text: qsTr('Center')
-        iconName: 'format-justify-center'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-justify-center.png'
+        icon.name: 'format-justify-center'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-center.png'
         onTriggered: document.alignment = Qt.AlignHCenter
         checkable: true
         checked: document.alignment == Qt.AlignHCenter
     }
-    Controls1.Action {
+    Action {
         id: alignRightAction
         text: qsTr('Right')
-        iconName: 'format-justify-right'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-justify-right.png'
+        icon.name: 'format-justify-right'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-right.png'
         onTriggered: document.alignment = Qt.AlignRight
         checkable: true
         checked: document.alignment == Qt.AlignRight
     }
-    Controls1.Action {
+    Action {
         id: alignJustifyAction
         text: qsTr('Justify')
-        iconName: 'format-justify-fill'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-justify-fill.png'
+        icon.name: 'format-justify-fill'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-justify-fill.png'
         onTriggered: document.alignment = Qt.AlignJustify
         checkable: true
         checked: document.alignment == Qt.AlignJustify
@@ -596,18 +617,18 @@ VuiBase {
         text: qsTr('Insert Table')
         onTriggered: tableDialog.open()
     }
-    Controls1.Action {
+    Action {
         id: decreaseIndentAction
         text: qsTr('Decrease Indent')
-        iconName: 'format-indent-less'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-indent-less.png'
+        icon.name: 'format-indent-less'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-less.png'
         onTriggered: document.indentLess()
     }
-    Controls1.Action {
+    Action {
         id: increaseIndentAction
         text: qsTr('Insert Indent')
-        iconName: 'format-indent-more'
-        iconSource: 'qrc:///icons/oxygen/32x32/actions/format-indent-more.png'
+        icon.name: 'format-indent-more'
+        icon.source: 'qrc:///icons/oxygen/32x32/actions/format-indent-more.png'
         onTriggered: document.indentMore()
     }
 
@@ -657,35 +678,41 @@ VuiBase {
                 text: qsTr('Rows')
                 Layout.alignment: Qt.AlignRight
             }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rowsSpinner
+                implicitWidth: 75
                 value: 1
                 from: 1
                 to: 100
                 stepSize: 1
+                decimals: 0
                 focus: true
             }
             Label {
                 text: qsTr('Columns')
                 Layout.alignment: Qt.AlignRight
             }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: columnsSpinner
+                implicitWidth: 75
                 value: 2
                 from: 1
                 to: 100
                 stepSize: 1
+                decimals: 0
             }
             Label {
                 text: qsTr('Border')
                 Layout.alignment: Qt.AlignRight
             }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: borderSpinner
+                implicitWidth: 75
                 value: 0
                 from: 0
                 to: 100
                 stepSize: 1
+                decimals: 0
             }
             Item { Layout.fillHeight: true; height: columnsSpinner.height }
         }

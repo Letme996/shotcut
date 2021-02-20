@@ -1,12 +1,9 @@
 
-
-import QtQuick 2.1
-import QtQuick.Controls 1.4
-import QtQuick.Controls 2.12 as Controls2
-import QtQuick.Layouts 1.0
-import QtQuick.Dialogs 1.1
-import Shotcut.Controls 1.0
-
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import QtQuick.Dialogs 1.3
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     width: 350
@@ -176,7 +173,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             parameters: ["sampleRadius", "searchRadius", "offset", "interpolation", "stabilizeYaw", "stabilizePitch", "stabilizeRoll", "smoothYaw", "smoothPitch", "smoothRoll", "timeBiasYaw", "timeBiasPitch", "timeBiasRoll"]
             Layout.columnSpan: 3
@@ -223,7 +220,6 @@ Item {
         CheckBox {
             text: qsTr('Analyze')
             checked: false
-            partiallyCheckedEnabled: false
             id: analyzeCheckBox
             Layout.columnSpan: 3
             onCheckedChanged: toggleMode()
@@ -239,12 +235,13 @@ Item {
             Layout.columnSpan: 2
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignLeft
+            selectByMouse: true
             onEditingFinished: updateProperty_analysisFile()
         }
-        Button {
-            iconName: 'document-open'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/document-open.png'
-            tooltip: qsTr('Browse...')
+        Shotcut.Button {
+            icon.name: 'document-open'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/document-open.png'
+            Shotcut.HoverTip { text: qsTr('Browse...') }
             implicitWidth: 20
             implicitHeight: 20
             onClicked: selectAnalysisFile.open()
@@ -256,13 +253,14 @@ Item {
         }
         TextField {
             id: clipOffsetTextField
+            selectByMouse: true
             onEditingFinished: updateProperty_clipOffset()
         }
         Label {
             text: qsTr('seconds')
             Layout.fillWidth: true
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: clipOffsetUndo
             onClicked: onClipOffsetUndo()
         }
@@ -271,14 +269,14 @@ Item {
             text: qsTr('Interpolation')
             Layout.alignment: Qt.AlignRight
         }
-        Controls2.ComboBox {
+        Shotcut.ComboBox {
             currentIndex: 0
             model: ["Nearest-neighbor", "Bilinear"]
             id: interpolationComboBox
             Layout.columnSpan: 2
             onCurrentIndexChanged: updateProperty_interpolation()
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: interpolationUndo
             onClicked: interpolationComboBox.currentIndex = 0
         }
@@ -302,7 +300,7 @@ Item {
             text: qsTr('Sample Radius')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: sampleRadiusSlider
             minimumValue: 1
             maximumValue: 64
@@ -312,7 +310,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_sampleRadius(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: sampleRadiusUndo
             onClicked: sampleRadiusSlider.value = 16
         }
@@ -321,7 +319,7 @@ Item {
             text: qsTr('Search Radius')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: searchRadiusSlider
             minimumValue: 1
             maximumValue: 128
@@ -331,7 +329,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_searchRadius(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: searchRadiusUndo
             onClicked: searchRadiusSlider.value = 24
         }
@@ -340,7 +338,7 @@ Item {
             text: qsTr('Offset')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: offsetSlider
             minimumValue: 1
             maximumValue: 256
@@ -350,7 +348,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_offset(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: offsetUndo
             onClicked: offsetSlider.value = 64
         }
@@ -362,7 +360,6 @@ Item {
         CheckBox {
             text: qsTr('Use backwards-facing track points')
             checked: false
-            partiallyCheckedEnabled: false
             id: useBackTrackpointsCheckBox
             Layout.columnSpan: 3
             onCheckedChanged: updateProperty_useBackTrackpoints()
@@ -379,7 +376,7 @@ Item {
             text: qsTr('Amount')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: stabilizeYawSlider
             minimumValue: 0
             maximumValue: 100
@@ -389,7 +386,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_stabilizeYaw(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: stabilizeYawUndo
             onClicked: stabilizeYawSlider.value = 100
         }
@@ -397,7 +394,7 @@ Item {
             text: qsTr('Smoothing')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: smoothYawSlider
             minimumValue: 1
             maximumValue: 300
@@ -407,7 +404,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_smoothYaw(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: smoothYawUndo
             onClicked: smoothYawSlider.value = 120
         }
@@ -415,7 +412,7 @@ Item {
             text: qsTr('Time Bias')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: timeBiasYawSlider
             minimumValue: -100
             maximumValue: 100
@@ -425,7 +422,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_timeBiasYaw(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: timeBiasYawUndo
             onClicked: timeBiasYawSlider.value = 0
         }
@@ -439,7 +436,7 @@ Item {
             text: qsTr('Amount')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: stabilizePitchSlider
             minimumValue: 0
             maximumValue: 100
@@ -449,7 +446,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_stabilizePitch(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: stabilizePitchUndo
             onClicked: stabilizePitchSlider.value = 100
         }
@@ -457,7 +454,7 @@ Item {
             text: qsTr('Smoothing')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: smoothPitchSlider
             minimumValue: 1
             maximumValue: 300
@@ -467,7 +464,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_smoothPitch(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: smoothPitchUndo
             onClicked: smoothPitchSlider.value = 120
         }
@@ -475,7 +472,7 @@ Item {
             text: qsTr('Time Bias')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: timeBiasPitchSlider
             minimumValue: -100
             maximumValue: 100
@@ -485,7 +482,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_timeBiasPitch(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: timeBiasPitchUndo
             onClicked: timeBiasPitchSlider.value = 0
         }
@@ -499,7 +496,7 @@ Item {
             text: qsTr('Amount')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: stabilizeRollSlider
             minimumValue: 0
             maximumValue: 100
@@ -509,7 +506,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_stabilizeRoll(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: stabilizeRollUndo
             onClicked: stabilizeRollSlider.value = 100
         }
@@ -517,7 +514,7 @@ Item {
             text: qsTr('Smoothing')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: smoothRollSlider
             minimumValue: 1
             maximumValue: 300
@@ -527,7 +524,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_smoothRoll(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: smoothRollUndo
             onClicked: smoothRollSlider.value = 120
         }
@@ -536,7 +533,7 @@ Item {
             text: qsTr('Time Bias')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: timeBiasRollSlider
             minimumValue: -100
             maximumValue: 100
@@ -546,7 +543,7 @@ Item {
             Layout.columnSpan: 2
             onValueChanged: updateProperty_timeBiasRoll(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: timeBiasRollUndo
             onClicked: timeBiasRollSlider.value = 0
         }

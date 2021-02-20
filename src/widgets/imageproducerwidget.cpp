@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020 Meltytech, LLC
+ * Copyright (c) 2012-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,21 +133,23 @@ void ImageProducerWidget::rename()
 
 void ImageProducerWidget::reopen(Mlt::Producer* p)
 {
-    double speed = m_producer->get_speed();
     int position = m_producer->position();
     if (position > p->get_out())
         position = p->get_out();
     p->set("in", m_producer->get_in());
+    MLT.stop();
     if (MLT.setProducer(p)) {
         AbstractProducerWidget::setProducer(nullptr);
         return;
     }
-    MLT.stop();
     setProducer(p);
-    emit producerReopened();
+    emit producerReopened(false);
     emit producerChanged(p);
-    MLT.seek(position);
-    MLT.play(speed);
+    if (p->get_int(kShotcutSequenceProperty)) {
+        MLT.play();
+    } else {
+        MLT.seek(position);
+    }
 }
 
 void ImageProducerWidget::recreateProducer()

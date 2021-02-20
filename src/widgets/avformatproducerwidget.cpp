@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020 Meltytech, LLC
+ * Copyright (c) 2012-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -242,7 +242,7 @@ void AvformatProducerWidget::reopen(Mlt::Producer* p)
         return;
     }
     MLT.stop();
-    emit producerReopened();
+    emit producerReopened(false);
     emit producerChanged(p);
     MLT.seek(position);
     MLT.play(speed);
@@ -329,7 +329,6 @@ void AvformatProducerWidget::onFrameDecoded()
     bool populateTrackCombos = (ui->videoTrackComboBox->count() == 0 &&
                                 ui->audioTrackComboBox->count() == 0);
     int color_range = !qstrcmp(m_producer->get("meta.media.color_range"), "full");
-    bool isAV1 = false;
 
     for (int i = 0; i < n; i++) {
         QString key = QString("meta.media.%1.stream.type").arg(i);
@@ -352,13 +351,8 @@ void AvformatProducerWidget::onFrameDecoded()
                 ui->videoTrackComboBox->addItem(name, i);
             }
             if (i == m_producer->get_int("video_index")) {
-                key = QString("meta.media.%1.codec.name").arg(i);
-                QString codec(m_producer->get(key.toLatin1().constData()));
-                if (codec == "libdav1d") {
-                    isAV1 = true;
-                }
                 key = QString("meta.media.%1.codec.long_name").arg(i);
-                codec = QString::fromUtf8(m_producer->get(key.toLatin1().constData()));
+                QString codec(m_producer->get(key.toLatin1().constData()));
                 ui->videoTableWidget->setItem(0, 1, new QTableWidgetItem(codec));
                 key = QString("meta.media.%1.codec.pix_fmt").arg(i);
                 QString pix_fmt = QString::fromLatin1(m_producer->get(key.toLatin1().constData()));
@@ -564,7 +558,8 @@ void AvformatProducerWidget::onFrameDecoded()
     ui->syncSlider->setValue(qRound(m_producer->get_double("video_delay") * 1000.0));
 
     if (Settings.showConvertClipDialog() && !m_producer->get_int(kShotcutSkipConvertProperty)) {
-        if (ui->videoTableWidget->item(5, 1)->data(Qt::UserRole).toInt() > 7) {
+        auto transferItem = ui->videoTableWidget->item(5, 1);
+        if (transferItem && transferItem->data(Qt::UserRole).toInt() > 7) {
             // Transfer characteristics > SMPTE240M Probably need conversion
             QString trcString = ui->videoTableWidget->item(5, 1)->text();
             m_producer->set(kShotcutSkipConvertProperty, true);
@@ -578,20 +573,6 @@ void AvformatProducerWidget::onFrameDecoded()
                                       "When it is done, double-click the job to open it.\n").arg(trcString),
                                       ui->scanComboBox->currentIndex(), this);
             dialog.set709Convert(true);
-            dialog.setWindowModality(QmlApplication::dialogModality());
-            dialog.showCheckBox();
-            convert(dialog);
-        } else if (isAV1) {
-            m_producer->set(kShotcutSkipConvertProperty, true);
-            LongUiTask::cancel();
-            MLT.pause();
-            LOG_INFO() << resource << "uses AV1 video codec";
-            TranscodeDialog dialog(tr("This file uses the AV1 video codec, which is not reliable for editing. "
-                                      "Do you want to convert it to an edit-friendly format?\n\n"
-                                      "If yes, choose a format below and then click OK to choose a file name. "
-                                      "After choosing a file name, a job is created. "
-                                      "When it is done, double-click the job to open it.\n"),
-                                   ui->scanComboBox->currentIndex(), this);
             dialog.setWindowModality(QmlApplication::dialogModality());
             dialog.showCheckBox();
             convert(dialog);
@@ -609,7 +590,7 @@ void AvformatProducerWidget::onFrameDecoded()
             dialog.setWindowModality(QmlApplication::dialogModality());
             dialog.showCheckBox();
             convert(dialog);
-        } else if (!MLT.isSeekable(m_producer.data())) {
+        } else if (QFile::exists(resource) && !MLT.isSeekable(m_producer.data())) {
             m_producer->set(kShotcutSkipConvertProperty, true);
             LongUiTask::cancel();
             MLT.pause();
@@ -833,15 +814,21 @@ void AvformatProducerWidget::convert(TranscodeDialog& dialog)
         args << "-i" << resource;
         args << "-max_muxing_queue_size" << "9999";
         // transcode all streams except data, subtitles, and attachments
-        if (m_producer->get_int("video_index") < m_producer->get_int("audio_index"))
+        auto audioIndex = m_producer->property_exists(kDefaultAudioIndexProperty)? m_producer->get_int(kDefaultAudioIndexProperty) : m_producer->get_int("audio_index");
+        if (m_producer->get_int("video_index") < audioIndex) {
             args << "-map" << "0:V?" << "-map" << "0:a?";
-        else
+        } else {
             args << "-map" << "0:a?" << "-map" << "0:V?";
+        }
         args << "-map_metadata" << "0" << "-ignore_unknown";
 
         // Set video filters
         args << "-vf";
         QString filterString;
+        if (dialog.deinterlace()) {
+            QString deinterlaceFilter = QString("bwdif,");
+            filterString = filterString + deinterlaceFilter;
+        }
         QString range;
         if (ui->rangeComboBox->currentIndex())
             range = "full";
@@ -864,7 +851,7 @@ void AvformatProducerWidget::convert(TranscodeDialog& dialog)
         else
             args << "-color_range" << "mpeg";
 
-        if (!ui->scanComboBox->currentIndex())
+        if (!dialog.deinterlace() && !ui->scanComboBox->currentIndex())
             args << "-flags" << "+ildct+ilme" << "-top" << QString::number(ui->fieldOrderComboBox->currentIndex());
 
         switch (dialog.format()) {
@@ -872,11 +859,11 @@ void AvformatProducerWidget::convert(TranscodeDialog& dialog)
             path.append("/%1 - %2.mp4");
             nameFilter = tr("MP4 (*.mp4);;All Files (*)");
             args << "-f" << "mp4" << "-codec:a" << "ac3" << "-b:a" << "512k" << "-codec:v" << "libx264";
-            args << "-preset" << "medium" << "-g" << "1" << "-crf" << "11";
+            args << "-preset" << "medium" << "-g" << "1" << "-crf" << "15";
             break;
         case 1:
             args << "-f" << "mov" << "-codec:a" << "alac";
-            if (ui->scanComboBox->currentIndex()) { // progressive
+            if (dialog.deinterlace() || ui->scanComboBox->currentIndex()) { // progressive
                 args << "-codec:v" << "dnxhd" << "-profile:v" << "dnxhr_hq" << "-pix_fmt" << "yuv422p";
             } else { // interlaced
                 args << "-codec:v" << "prores_ks" << "-profile:v" << "standard";
@@ -1180,7 +1167,8 @@ void AvformatProducerWidget::on_actionExtractSubclip_triggered()
         else
             ffmpegArgs << "-to" << QString::fromLatin1(m_producer->get_time("out", mlt_time_clock)).replace(',', '.');
         ffmpegArgs << "-avoid_negative_ts" << "make_zero"
-                   << "-map" << "0" << "-map_metadata" << "0"
+                   << "-map" << "0:V?" << "-map" << "0:a?" << "-map" << "0:s?" << "-map" << "0:d?"
+                   << "-map_metadata" << "0"
                    << "-codec" << "copy" << "-y" << filename;
 
         // Run the ffmpeg job.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 Meltytech, LLC
+ * Copyright (c) 2014-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     property string fillProperty
@@ -377,12 +377,14 @@ Item {
             rectW.value = filterRect.width.toFixed()
             rectH.value = filterRect.height.toFixed()
             blockUpdate = true
-            scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
+            scaleSlider.update()
         }
+        positionKeyframesButton.checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
         if (rotationProperty) {
             blockUpdate = true
             rotationSlider.value = filter.getDouble(rotationProperty, position)
             rotationSlider.enabled = enabled
+            rotationKeyframesButton.checked = filter.keyframeCount(rotationProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
         }
         blockUpdate = false
         rectX.enabled = enabled
@@ -424,16 +426,14 @@ Item {
         }
         var middleY = filterRect.y + filterRect.height / 2
         var bottomY = filterRect.y + filterRect.height
-        filterRect.height = rectH.value = Math.round(value / Math.max(aspectRatio, 1.0e-6))
+        filterRect.height = rectH.value = value / Math.max(aspectRatio, 1.0e-6)
         if (middleRadioButton.checked) {
             filterRect.y = rectY.value = middleY - filterRect.height / 2
         }
         else if (bottomRadioButton.checked) {
             filterRect.y = rectY.value = bottomY - filterRect.height
         }
-        blockUpdate = true
-        scaleSlider.value = Math.min(rectW.value / profile.width * 100, scaleSlider.maximumValue)
-        blockUpdate = false
+        scaleSlider.update()
         setFilter(getPosition())
     }
 
@@ -448,22 +448,20 @@ Item {
         }
         var centerX = filterRect.x + filterRect.width / 2
         var rightX = filterRect.x + filterRect.width
-        filterRect.width = rectW.value = Math.round(value * aspectRatio)
+        filterRect.width = rectW.value = value * aspectRatio
         if (centerRadioButton.checked) {
             filterRect.x = rectX.value = centerX - filterRect.width / 2
         }
         else if (rightRadioButton.checked) {
             filterRect.x = rectX.value = rightX - filterRect.width
         }
-        blockUpdate = true
-        scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
-        blockUpdate = false
+        scaleSlider.update()
         setFilter(getPosition())
     }
 
-    ExclusiveGroup { id: sizeGroup }
-    ExclusiveGroup { id: halignGroup }
-    ExclusiveGroup { id: valignGroup }
+    ButtonGroup { id: sizeGroup }
+    ButtonGroup { id: halignGroup }
+    ButtonGroup { id: valignGroup }
 
     GridLayout {
         columns: 6
@@ -474,7 +472,7 @@ Item {
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             parameters: [fillProperty, distortProperty, rectProperty, halignProperty, valignProperty]
             Layout.columnSpan: 5
@@ -507,21 +505,15 @@ Item {
         }
         RowLayout {
             Layout.columnSpan: 3
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectX
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.x - value) >= 1) {
-                        filterRect.x = value
-                        setFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.x - value) >= 1) {
                         filterRect.x = value
                         setFilter(getPosition())
@@ -529,21 +521,15 @@ Item {
                 }
             }
             Label { text: ',' }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectY
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.y - value) >= 1) {
-                        filterRect.y = value
-                        setFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.y - value) >= 1) {
                         filterRect.y = value
                         setFilter(getPosition())
@@ -551,7 +537,7 @@ Item {
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filterRect.x = rectX.value = defaultRect.x
                 filterRect.y = rectY.value = defaultRect.y
@@ -568,9 +554,8 @@ Item {
                 height: positionKeyframesButton.height
                 anchors.horizontalCenter: positionKeyframesButton.horizontalCenter
             }
-            KeyframesButton {
+            Shotcut.KeyframesButton {
                 id: positionKeyframesButton
-                checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
                 onToggled: {
                     if (checked) {
                         blockUpdate = true
@@ -598,25 +583,15 @@ Item {
         }
         RowLayout {
             Layout.columnSpan: 3
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectW
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: 0
-                maximumValue: 999999999
+                from: 0
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.width - value) >= 1) {
-                        if (isFillMode()) {
-                            scaleByWidth(value)
-                        } else {
-                            filterRect.width = value
-                            setFilter(getPosition())
-                        }
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.width - value) >= 1) {
                         if (isFillMode()) {
                             scaleByWidth(value)
@@ -628,25 +603,15 @@ Item {
                 }
             }
             Label { text: 'x' }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectH
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: 0
-                maximumValue: 999999999
+                from: 0
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.height - value) >= 1) {
-                        if (isFillMode()) {
-                            scaleByHeight(value)
-                        } else {
-                            filterRect.height = value
-                            setFilter(getPosition())
-                        }
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.height - value) >= 1) {
                         if (isFillMode()) {
                             scaleByHeight(value)
@@ -658,12 +623,12 @@ Item {
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             id: sizeUndoButton
             onClicked: {
                 filterRect.width = rectW.value = defaultRect.width
                 filterRect.height = rectH.value = defaultRect.height
-                scaleSlider.value = Math.min(filterRect.width / profile.width * 100, scaleSlider.maximumValue)
+                scaleSlider.update()
                 setFilter(getPosition())
             }
         }
@@ -672,18 +637,23 @@ Item {
             text: qsTr('Zoom')
             Layout.alignment: Qt.AlignRight
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: scaleSlider
             Layout.columnSpan: 3
             minimumValue: 0.1
             maximumValue: 1000
             decimals: 1
             suffix: ' %'
+            function update() {
+                blockUpdate = true
+                scaleSlider.value = Math.min(filterRect.width / defaultRect.width * 100, scaleSlider.maximumValue)
+                blockUpdate = false
+            }
             onValueChanged: {
-                if (!blockUpdate && Math.abs(value - filterRect.width * 100 / profile.width) > 0.1) {
+                if (!blockUpdate && Math.abs(value - filterRect.width / defaultRect.width * 100) > 0.1) {
                     var centerX = filterRect.x + filterRect.width / 2
                     var rightX = filterRect.x + filterRect.width
-                    filterRect.width = rectW.value = (profile.width * value / 100)
+                    filterRect.width = rectW.value = defaultRect.width * value / 100
                     if (centerRadioButton.checked) {
                         filterRect.x = rectX.value = centerX - filterRect.width / 2
                     } else if (rightRadioButton.checked) {
@@ -701,16 +671,9 @@ Item {
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             enabled: scaleSlider.enabled
-            onClicked: {
-                if (isFitMode()) {
-                    scaleSlider.value = 100
-                } else {
-                    var width = (producer.displayAspectRatio > 1.0)? profile.width : profile.height * producer.displayAspectRatio
-                    scaleSlider.value = Math.min(width / profile.width * 100, scaleSlider.maximumValue)
-                }
-            }
+            onClicked: sizeUndoButton.clicked()
         }
 
         Label {
@@ -720,7 +683,7 @@ Item {
         RadioButton {
             id: fitRadioButton
             text: qsTr('Fit')
-            exclusiveGroup: sizeGroup
+            ButtonGroup.group: sizeGroup
             onClicked: {
                 filter.set(fillProperty, 0)
                 filter.set(distortProperty, 0)
@@ -730,7 +693,7 @@ Item {
         RadioButton {
             id: fillRadioButton
             text: qsTr('Fill')
-            exclusiveGroup: sizeGroup
+            ButtonGroup.group: sizeGroup
             onClicked: {
                 filter.set(fillProperty, 1)
                 filter.set(distortProperty, 0)
@@ -747,14 +710,14 @@ Item {
         RadioButton {
             id: distortRadioButton
             text: qsTr('Distort')
-            exclusiveGroup: sizeGroup
+            ButtonGroup.group: sizeGroup
             onClicked: {
                 filter.set(fillProperty, 1)
                 filter.set(distortProperty, 1)
                 updateAspectRatio()
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 fitRadioButton.checked = true
                 filter.set(fillProperty, 0)
@@ -771,22 +734,22 @@ Item {
         RadioButton {
             id: leftRadioButton
             text: qsTr('Left')
-            exclusiveGroup: halignGroup
+            ButtonGroup.group: halignGroup
             onClicked: filter.set(halignProperty, 'left')
         }
         RadioButton {
             id: centerRadioButton
             text: qsTr('Center')
-            exclusiveGroup: halignGroup
+            ButtonGroup.group: halignGroup
             onClicked: filter.set(halignProperty, 'center')
         }
         RadioButton {
             id: rightRadioButton
             text: qsTr('Right')
-            exclusiveGroup: halignGroup
+            ButtonGroup.group: halignGroup
             onClicked: filter.set(halignProperty, 'right')
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 leftRadioButton.checked = true
                 filter.set(halignProperty, 'left')
@@ -801,22 +764,22 @@ Item {
         RadioButton {
             id: topRadioButton
             text: qsTr('Top')
-            exclusiveGroup: valignGroup
+            ButtonGroup.group: valignGroup
             onClicked: filter.set(valignProperty, 'top')
         }
         RadioButton {
             id: middleRadioButton
             text: qsTr('Middle', 'Size and Position video filter')
-            exclusiveGroup: valignGroup
+            ButtonGroup.group: valignGroup
             onClicked: filter.set(valignProperty, 'middle')
         }
         RadioButton {
             id: bottomRadioButton
             text: qsTr('Bottom')
-            exclusiveGroup: valignGroup
+            ButtonGroup.group: valignGroup
             onClicked: filter.set(valignProperty, 'bottom')
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 topRadioButton.checked = true
                 filter.set(valignProperty, 'top')
@@ -829,7 +792,7 @@ Item {
             Layout.alignment: Qt.AlignRight
             visible: !!rotationProperty
         }
-        SliderSpinner {
+        Shotcut.SliderSpinner {
             id: rotationSlider
             Layout.columnSpan: 3
             visible: !!rotationProperty
@@ -839,14 +802,13 @@ Item {
             suffix: qsTr(' °', 'degrees')
             onValueChanged: updateRotation(getPosition())
         }
-        UndoButton {
+        Shotcut.UndoButton {
             visible: !!rotationProperty
             onClicked: rotationSlider.value = 0
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: rotationKeyframesButton
             visible: !!rotationProperty
-            checked: filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount(rotationProperty) > 0
             onToggled: {
                 toggleKeyframes(checked, rotationProperty, rotationSlider.value)
                 setControls()
@@ -858,7 +820,7 @@ Item {
             Layout.alignment: Qt.AlignRight
             visible: bgColor.visible
         }
-        ColorPicker {
+        Shotcut.ColorPicker {
             id: bgColor
             visible: !!backgroundProperty
             Layout.columnSpan: 3
@@ -866,7 +828,7 @@ Item {
             alpha: true
             onValueChanged: filter.set(backgroundProperty, 'color:' + value)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             visible: bgColor.visible
             onClicked: bgColor.value = '#00000000'
         }

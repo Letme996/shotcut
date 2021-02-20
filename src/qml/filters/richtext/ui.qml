@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Meltytech, LLC
+ * Copyright (c) 2020-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick 2.7
-import QtQuick.Controls 1.4
-import QtQuick.Layouts 1.2
-import Shotcut.Controls 1.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import Shotcut.Controls 1.0 as Shotcut
 
 Item {
     property string rectProperty: 'geometry'
@@ -186,6 +186,7 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
         rectY.enabled = enabled
         rectW.enabled = enabled
         rectH.enabled = enabled
+        positionKeyframesButton.checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
 
         var document = getTextDimensions()
         if (parseInt(sizeW.text) !== Math.round(document.width) || parseInt(sizeH.text) !== Math.round(document.height)) {
@@ -223,10 +224,6 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
         }
     }
 
-    ExclusiveGroup { id: sizeGroup }
-    ExclusiveGroup { id: halignGroup }
-    ExclusiveGroup { id: valignGroup }
-
     GridLayout {
         columns: 6
         anchors.fill: parent
@@ -236,7 +233,7 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
             text: qsTr('Preset')
             Layout.alignment: Qt.AlignRight
         }
-        Preset {
+        Shotcut.Preset {
             id: preset
             parameters: [rectProperty, 'bgcolour', 'overflow-y']
             Layout.columnSpan: 5
@@ -265,21 +262,15 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
         }
         RowLayout {
             Layout.columnSpan: 3
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectX
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.x - value) > 1) {
-                        filterRect.x = value
-                        updateFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.x - value) > 1) {
                         filterRect.x = value
                         updateFilter(getPosition())
@@ -287,21 +278,15 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 }
             }
             Label { text: ',' }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectY
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.y - value) > 1) {
-                        filterRect.y = value
-                        updateFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.y - value) > 1) {
                         filterRect.y = value
                         updateFilter(getPosition())
@@ -309,17 +294,16 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filterRect.x = rectX.value = defaultRect.x
                 filterRect.y = rectY.value = defaultRect.y
                 updateFilter(getPosition())
             }
         }
-        KeyframesButton {
+        Shotcut.KeyframesButton {
             id: positionKeyframesButton
             Layout.rowSpan: 2
-            checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
             onToggled: {
                 if (checked) {
                     filter.clearSimpleAnimation(rectProperty)
@@ -338,21 +322,15 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
         }
         RowLayout {
             Layout.columnSpan: 3
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectW
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.width - value) > 1) {
-                        filterRect.width = value
-                        updateFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.width - value) > 1) {
                         filterRect.width = value
                         updateFilter(getPosition())
@@ -360,21 +338,15 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 }
             }
             Label { text: 'x' }
-            SpinBox {
+            Shotcut.DoubleSpinBox {
                 id: rectH
                 horizontalAlignment: Qt.AlignRight
                 Layout.minimumWidth: 100
                 decimals: 0
                 stepSize: 1
-                minimumValue: -999999999
-                maximumValue: 999999999
+                from: -999999999
+                to: 999999999
                 onValueChanged: {
-                    if (hovered && Math.abs(filterRect.height - value) > 1) {
-                        filterRect.height = value
-                        updateFilter(getPosition())
-                    }
-                }
-                onEditingFinished: {
                     if (Math.abs(filterRect.height - value) > 1) {
                         filterRect.height = value
                         updateFilter(getPosition())
@@ -382,7 +354,7 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 }
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filterRect.width = rectW.value = defaultRect.width
                 filterRect.height = rectH.value = defaultRect.height
@@ -401,6 +373,7 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 horizontalAlignment: Qt.AlignRight
                 readOnly: true
                 opacity: 0.7
+                selectByMouse: true
             }
             Label { text: 'x' }
             TextField {
@@ -408,6 +381,7 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
                 horizontalAlignment: Qt.AlignRight
                 readOnly: true
                 opacity: 0.7
+                selectByMouse: true
             }
         }
         Item { Layout.columnSpan: 2; Layout.fillWidth: true }
@@ -416,14 +390,14 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
             text: qsTr('Background color')
             Layout.alignment: Qt.AlignRight
         }
-        ColorPicker {
+        Shotcut.ColorPicker {
             id: bgColor
             Layout.columnSpan: 3
             eyedropper: false
             alpha: true
             onValueChanged: filter.set('bgcolour', value)
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: bgColor.value = '#00000000'
         }
         Item { Layout.fillWidth: true }
@@ -434,11 +408,11 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
         }
         RowLayout {
             Layout.columnSpan: 3
-            ExclusiveGroup { id: overflowGroup }
+            ButtonGroup { id: overflowGroup }
             RadioButton {
                 id: automaticOverflowRadioButton
                 text: qsTr('Automatic')
-                exclusiveGroup: overflowGroup
+                ButtonGroup.group: overflowGroup
                 onClicked: {
                     filter.set('overflow-y', '')
                     filter.resetProperty('overflow-y')
@@ -447,17 +421,17 @@ body { font-family:%1; font-size:72pt; font-weight:600; font-style:normal; color
             RadioButton {
                 id: visibleOverflowRadioButton
                 text: qsTr('Visible')
-                exclusiveGroup: overflowGroup
+                ButtonGroup.group: overflowGroup
                 onClicked: filter.set('overflow-y', 1)
             }
             RadioButton {
                 id: hiddenOverflowRadioButton
                 text: qsTr('Hidden')
-                exclusiveGroup: overflowGroup
+                ButtonGroup.group: overflowGroup
                 onClicked: filter.set('overflow-y', 0)
             }
         }
-        UndoButton {
+        Shotcut.UndoButton {
             onClicked: {
                 filter.resetProperty('overflow-y')
                 automaticOverflowRadioButton.checked = true

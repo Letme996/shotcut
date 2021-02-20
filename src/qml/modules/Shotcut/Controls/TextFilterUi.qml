@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 Meltytech, LLC
+ * Copyright (c) 2014-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
  */
 
 import QtQuick 2.0
-import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
-import Shotcut.Controls 1.0
+import QtQuick.Controls 2.12
 import QtQuick.Dialogs 1.1
+import QtQuick.Layouts 1.1
+import Shotcut.Controls 1.0 as Shotcut
 
 GridLayout {
     columns: 6
@@ -141,15 +141,14 @@ GridLayout {
         positionKeyframesButton.checked = filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
     }
 
-    ExclusiveGroup { id: sizeGroup }
-    ExclusiveGroup { id: halignGroup }
-    ExclusiveGroup { id: valignGroup }
+    ButtonGroup { id: halignGroup }
+    ButtonGroup { id: valignGroup }
 
     Label {
         text: qsTr('Font')
         Layout.alignment: Qt.AlignRight
     }
-    ColorPicker {
+    Shotcut.ColorPicker {
         id: fgColor
         eyedropper: false
         alpha: true
@@ -157,7 +156,7 @@ GridLayout {
     }
     RowLayout {
         Layout.columnSpan: 4
-        Button {
+        Shotcut.Button {
             id: fontButton
             onClicked: {
                 if (fontSizeCheckBox.checked) {
@@ -209,7 +208,7 @@ GridLayout {
         text: qsTr('Outline')
         Layout.alignment: Qt.AlignRight
     }
-    ColorPicker {
+    Shotcut.ColorPicker {
         id: outlineColor
         eyedropper: false
         alpha: true
@@ -219,13 +218,12 @@ GridLayout {
         text: qsTr('Thickness')
         Layout.alignment: Qt.AlignRight
     }
-    SpinBox {
+    Shotcut.DoubleSpinBox {
         id: outlineSpinner
         Layout.minimumWidth: 50
         Layout.columnSpan: 3
-        minimumValue: 0
-        maximumValue: 30
-        decimals: 0
+        from: 0
+        to: 30
         onValueChanged: filter.set('outline', value)
     }
 
@@ -233,7 +231,7 @@ GridLayout {
         text: qsTr('Background')
         Layout.alignment: Qt.AlignRight
     }
-    ColorPicker {
+    Shotcut.ColorPicker {
         id: bgColor
         eyedropper: false
         alpha: true
@@ -243,13 +241,12 @@ GridLayout {
         text: qsTr('Padding')
         Layout.alignment: Qt.AlignRight
     }
-    SpinBox {
+    Shotcut.DoubleSpinBox {
         id: padSpinner
         Layout.minimumWidth: 50
         Layout.columnSpan: 3
-        minimumValue: 0
-        maximumValue: 100
-        decimals: 0
+        from: 0
+        to: 100
         onValueChanged: filter.set('pad', value)
     }
 
@@ -262,6 +259,7 @@ GridLayout {
         TextField {
             id: rectX
             horizontalAlignment: Qt.AlignRight
+            selectByMouse: true
             onEditingFinished: if (filterRect.x !== parseFloat(text)) {
                 filterRect.x = parseFloat(text)
                 updateFilter(getPosition())
@@ -271,23 +269,23 @@ GridLayout {
         TextField {
             id: rectY
             horizontalAlignment: Qt.AlignRight
+            selectByMouse: true
             onEditingFinished: if (filterRect.y !== parseFloat(text)) {
                 filterRect.y = parseFloat(text)
                 updateFilter(getPosition())
             }
         }
     }
-    UndoButton {
+    Shotcut.UndoButton {
         onClicked: {
             rectX.text = rectY.text = 0
             filterRect.x = filterRect.y = 0
             updateFilter(getPosition())
         }
     }
-    KeyframesButton {
+    Shotcut.KeyframesButton {
         id: positionKeyframesButton
         Layout.rowSpan: 2
-        checked: filter.keyframeCount(rectProperty) > 0 && filter.animateIn <= 0 && filter.animateOut <= 0
         onToggled: {
             if (checked) {
                 filter.clearSimpleAnimation(rectProperty)
@@ -309,6 +307,7 @@ GridLayout {
         TextField {
             id: rectW
             horizontalAlignment: Qt.AlignRight
+            selectByMouse: true
             onEditingFinished: if (filterRect.width !== parseFloat(text)) {
                 filterRect.width = parseFloat(text)
                 updateFilter(getPosition())
@@ -318,13 +317,14 @@ GridLayout {
         TextField {
             id: rectH
             horizontalAlignment: Qt.AlignRight
+            selectByMouse: true
             onEditingFinished: if (filterRect.height !== parseFloat(text)) {
                 filterRect.height = parseFloat(text)
                 updateFilter(getPosition())
             }
         }
     }
-    UndoButton {
+    Shotcut.UndoButton {
         onClicked: {
             rectW.text = profile.width
             rectH.text = profile.height
@@ -341,22 +341,22 @@ GridLayout {
     RadioButton {
         id: leftRadioButton
         text: qsTr('Left')
-        exclusiveGroup: halignGroup
+        ButtonGroup.group: halignGroup
         onClicked: filter.set(halignProperty, 'left')
     }
     RadioButton {
         id: centerRadioButton
         text: qsTr('Center')
-        exclusiveGroup: halignGroup
+        ButtonGroup.group: halignGroup
         onClicked: filter.set(halignProperty, 'center')
     }
     RadioButton {
         id: rightRadioButton
         text: qsTr('Right')
-        exclusiveGroup: halignGroup
+        ButtonGroup.group: halignGroup
         onClicked: filter.set(halignProperty, 'right')
     }
-    UndoButton {
+    Shotcut.UndoButton {
         onClicked: {
             centerRadioButton.checked = true
             filter.set(halignProperty, 'center')
@@ -371,22 +371,22 @@ GridLayout {
     RadioButton {
         id: topRadioButton
         text: qsTr('Top')
-        exclusiveGroup: valignGroup
+        ButtonGroup.group: valignGroup
         onClicked: filter.set(valignProperty, 'top')
     }
     RadioButton {
         id: middleRadioButton
         text: qsTr('Middle', 'Text video filter')
-        exclusiveGroup: valignGroup
+        ButtonGroup.group: valignGroup
         onClicked: filter.set(valignProperty, 'middle')
     }
     RadioButton {
         id: bottomRadioButton
         text: qsTr('Bottom')
-        exclusiveGroup: valignGroup
+        ButtonGroup.group: valignGroup
         onClicked: filter.set(valignProperty, 'bottom')
     }
-    UndoButton {
+    Shotcut.UndoButton {
         onClicked: {
             bottomRadioButton.checked = true
             filter.set(valignProperty, 'bottom')

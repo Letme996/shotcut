@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 Meltytech, LLC
+ * Copyright (c) 2014-2021 Meltytech, LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,14 @@
  */
 
 import QtQuick 2.1
-import QtQuick.Controls 1.3
+import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.0
-import Shotcut.Controls 1.0
+import Shotcut.Controls 1.0 as Shotcut
+import org.shotcut.qml 1.0 as Shotcut
 
 Rectangle {
     id: root
-    property int selectedIndex: -1
+    property int selectedIndex: Shotcut.Filter.NoCurrentFilter
     signal currentFilterRequested(int attachedIndex)
     
     function clearCurrentFilter() {
@@ -123,99 +124,99 @@ Rectangle {
             }
         }
 
-        Button {
+        Shotcut.Button {
             id: addButton
-            Layout.minimumWidth: height
-            iconName: 'list-add'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/list-add.png'
+            implicitWidth: height
+            icon.name: 'list-add'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-add.png'
             enabled: attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1.0 : 0.5
-            tooltip: qsTr('Add a filter')
+            Shotcut.HoverTip { text: qsTr('Add a filter') }
             onClicked: {
                 if (application.confirmOutputFilter()) {
                     filterMenu.open()
                 }
             }
         }
-        Button {
+        Shotcut.Button {
             id: removeButton
-            Layout.minimumWidth: height
-            iconName: 'list-remove'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/list-remove.png'
-            enabled: selectedIndex > -1
+            implicitWidth: height
+            icon.name: 'list-remove'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/list-remove.png'
+            enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1.0 : 0.5
-            tooltip: qsTr('Remove selected filter')
+            Shotcut.HoverTip { text: qsTr('Remove selected filter') }
             onClicked: {
                 attachedfiltersmodel.remove(selectedIndex)
             }
         }
-        Button { // separator
+        Shotcut.Button { // separator
             enabled: false
             implicitWidth: 1
             implicitHeight: 20
         }
-        Button {
+        Shotcut.Button {
             id: copyButton
-            Layout.minimumWidth: height
-            iconName: 'edit-copy'
-            enabled: selectedIndex > -1
+            implicitWidth: height
+            icon.name: 'edit-copy'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-copy.png'
+            enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1.0 : 0.5
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/edit-copy.png'
-            tooltip: qsTr('Copy the filters')
+            Shotcut.HoverTip { text: qsTr('Copy the filters') }
             onClicked: application.copyFilters()
         }
-        Button {
+        Shotcut.Button {
             id: pasteButton
-            Layout.minimumWidth: height
+            implicitWidth: height
             enabled: application.hasFiltersOnClipboard && attachedfiltersmodel.isProducerSelected
             opacity: enabled ? 1.0 : 0.5
-            iconName: 'edit-paste'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/edit-paste.png'
-            tooltip: qsTr('Paste filters')
+            icon.name: 'edit-paste'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/edit-paste.png'
+            Shotcut.HoverTip { text: qsTr('Paste filters') }
             onClicked: application.pasteFilters()
         }
-        Button { // separator
+        Shotcut.Button { // separator
             enabled: false
             implicitWidth: 1
             implicitHeight: 20
         }
-        Button {
+        Shotcut.Button {
             id: moveUpButton
-            Layout.minimumWidth: height
+            implicitWidth: height
             enabled: selectedIndex > 0
             opacity: enabled ? 1.0 : 0.5
-            iconName: 'lift'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/lift.png'
-            tooltip: qsTr('Move filter up')
+            icon.name: 'lift'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/lift.png'
+            Shotcut.HoverTip { text: qsTr('Move filter up') }
             onClicked: attachedfiltersmodel.move(selectedIndex, --selectedIndex)
         }
-        Button {
+        Shotcut.Button {
             id: moveDownButton
-            Layout.minimumWidth: height
-            enabled: selectedIndex > -1 && selectedIndex + 1 < attachedfiltersmodel.rowCount()
+            implicitWidth: height
+            enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter && selectedIndex + 1 < attachedfiltersmodel.rowCount()
             opacity: enabled ? 1.0 : 0.5
-            iconName: 'overwrite'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/overwrite.png'
-            tooltip: qsTr('Move filter down')
+            icon.name: 'overwrite'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/overwrite.png'
+            Shotcut.HoverTip { text: qsTr('Move filter down') }
             onClicked: attachedfiltersmodel.move(selectedIndex, ++selectedIndex)
         }
-        Button { // separator
+        Shotcut.Button { // separator
             enabled: false
             implicitWidth: 1
             implicitHeight: 20
         }
-        Button {
+        Shotcut.Button {
             id: deselectButton
-            Layout.minimumWidth: height
-            iconName: 'window-close'
-            iconSource: 'qrc:///icons/oxygen/32x32/actions/window-close.png'
-            enabled: selectedIndex > -1
+            implicitWidth: height
+            icon.name: 'window-close'
+            icon.source: 'qrc:///icons/oxygen/32x32/actions/window-close.png'
+            enabled: selectedIndex > Shotcut.Filter.NoCurrentFilter
             opacity: enabled ? 1.0 : 0.5
-            tooltip: qsTr('Deselect the filter')
+            Shotcut.HoverTip { text: qsTr('Deselect the filter') }
             onClicked: {
                 clearCurrentFilter()
-                attachedFilters.setCurrentFilter(-2)
-                selectedIndex = -1
+                attachedFilters.setCurrentFilter(Shotcut.Filter.DeselectCurrentFilter)
+                selectedIndex = Shotcut.Filter.NoCurrentFilter
                 filter.deselect()
             }
         }
@@ -224,8 +225,35 @@ Rectangle {
         }
     }
 
-    ScrollView {
+    Flickable {
         id: filterConfigScrollView
+        clip: true
+        interactive: false
+        anchors.bottomMargin: 16
+        anchors.rightMargin: 16
+        contentWidth: filterConfig.item.width + 16
+        contentHeight: filterConfig.item.height + 16
+        ScrollBar.horizontal: ScrollBar {
+            height: 16
+            policy: ScrollBar.AlwaysOn
+            visible: filterConfigScrollView.contentWidth > filterConfigScrollView.width
+            parent: filterConfigScrollView.parent
+            anchors.top: filterConfigScrollView.bottom
+            anchors.left: filterConfigScrollView.left
+            anchors.right: filterConfigScrollView.right
+            background: Rectangle { color: parent.palette.alternateBase }
+        }
+        ScrollBar.vertical: ScrollBar {
+            width: 16
+            policy: ScrollBar.AlwaysOn
+            visible: filterConfigScrollView.contentHeight > filterConfigScrollView.height
+            parent: filterConfigScrollView.parent
+            anchors.top: filterConfigScrollView.top
+            anchors.left: filterConfigScrollView.right
+            anchors.bottom: filterConfigScrollView.bottom
+            background: Rectangle { color: parent.palette.alternateBase }
+        }
+
         function expandWidth() {
             if (filterConfig.item) {
                 filterConfig.item.width =
@@ -254,6 +282,7 @@ Rectangle {
             bottom: parent.bottom
             topMargin: attachedContainer.anchors.topMargin
         }
+        z: 1
         onFilterSelected: {
             attachedfiltersmodel.add(metadatamodel.get(index))
         }
@@ -300,6 +329,8 @@ Rectangle {
 
     Connections {
         target: attachedfiltersmodel
-        onIsProducerSelectedChanged: filterMenu.close()
+        function onIsProducerSelectedChanged() {
+            filterMenu.close()
+        }
     }
 }

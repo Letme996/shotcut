@@ -2,7 +2,6 @@ CONFIG   += link_prl
 
 QT       += widgets opengl xml network printsupport qml quick sql
 QT       += multimedia websockets quickwidgets quickcontrols2
-QT       += qml-private core-private quick-private gui-private
 
 TARGET = shotcut
 TEMPLATE = app
@@ -57,6 +56,7 @@ SOURCES += main.cpp\
     dialogs/filedatedialog.cpp \
     jobqueue.cpp \
     docks/jobsdock.cpp \
+    dialogs/multifileexportdialog.cpp \
     dialogs/slideshowgeneratordialog.cpp \
     dialogs/textviewerdialog.cpp \
     models/playlistmodel.cpp \
@@ -188,6 +188,7 @@ HEADERS  += mainwindow.h \
     dialogs/filedatedialog.h \
     jobqueue.h \
     docks/jobsdock.h \
+    dialogs/multifileexportdialog.h \
     dialogs/slideshowgeneratordialog.h \
     dialogs/textviewerdialog.h \
     models/playlistmodel.h \
@@ -318,9 +319,12 @@ RESOURCES += \
 
 OTHER_FILES += \
     ../.github/workflows/build-linux.yml \
+    ../.github/workflows/build-linux-unstable.yml \
     ../.github/workflows/build-macos.yml \
     ../.github/workflows/build-sdk-windows.yml \
+    ../.github/workflows/build-sdk-windows-unstable.yml \
     ../.github/workflows/build-windows.yml \
+    ../.github/workflows/build-windows-unstable.yml \
     ../COPYING \
     ../README.md \
     ../packaging/windows/shotcut.rc \
